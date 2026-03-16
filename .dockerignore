@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+test-results
+playwright-report
+tests
+.env*
+client_secret.json
+README.md
+npm-debug.log*

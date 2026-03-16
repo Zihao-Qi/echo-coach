@@ -2,6 +2,9 @@
 
 `Echo Coach` is a Next.js prototype for a live interview expression coach. The current MVP asks an interview question aloud, captures the user’s spoken answer, rewrites that answer into a clearer and more professional response, and lets the user replay the polished version for practice.
 
+Architecture diagram:
+- [docs/architecture.md](./docs/architecture.md)
+
 Local development defaults to the mock coaching flow so the full product shell can be built without cloud dependencies. Real mode uses:
 - Gemini Live for the spoken interviewer
 - Chirp 3 for transcript capture

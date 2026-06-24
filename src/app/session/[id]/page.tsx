@@ -43,20 +43,20 @@ export default function SessionPage() {
   }, [routeSessionId, router, session, status]);
 
   if (!session) {
-    return <div className="p-8 text-center">Loading session...</div>;
+    return <div className="p-8 text-center text-slate-500 font-medium">Loading session...</div>;
   }
 
   const currentQuestion = agentPrompt || session.currentQuestion || session.openingQuestion;
   const hasMoreQuestions = session.questionIndex < session.questionLimit;
 
   const statusColors: Record<string, string> = {
-    connecting: "bg-yellow-500",
-    prompting: "bg-amber-500 animate-pulse",
-    ready: "bg-slate-500",
-    listening: "bg-green-500 animate-pulse",
-    analyzing: "bg-blue-500 animate-pulse",
-    ready_to_practice: "bg-indigo-500",
-    error: "bg-red-500",
+    connecting: "bg-amber-400 shadow-[0_0_8px_#fbbf24]",
+    prompting: "bg-amber-500 animate-pulse shadow-[0_0_8px_#f59e0b]",
+    ready: "bg-slate-400 shadow-[0_0_8px_#94a3b8]",
+    listening: "bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]",
+    analyzing: "bg-blue-500 animate-pulse shadow-[0_0_8px_#3b82f6]",
+    ready_to_practice: "bg-indigo-500 shadow-[0_0_8px_#6366f1]",
+    error: "bg-rose-500 shadow-[0_0_8px_#f43f5e]",
   };
 
   const statusLabels: Record<string, string> = {
@@ -70,209 +70,284 @@ export default function SessionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-6 py-4">
+    <div className="min-h-screen bg-slate-50 nordic-grid relative overflow-hidden pb-32">
+      {/* Drifting Background Ambient Pastels */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-200/40 glow-orb-1 pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-rose-200/30 glow-orb-2 pointer-events-none"></div>
+      <div className="absolute top-[45%] right-[15%] w-[35%] h-[35%] rounded-full bg-sky-200/30 glow-orb-1 pointer-events-none"></div>
+
+      <header className="border-b border-indigo-100 bg-white/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
               Echo Coach
             </p>
-            <h1 className="mt-2 text-xl font-semibold text-gray-900">Interview Practice</h1>
+            <h1 className="mt-1 text-2xl font-extrabold text-slate-900 tracking-tight">Interview Practice</h1>
           </div>
-          <div className="flex items-center gap-2 rounded-full border bg-gray-50 px-3 py-1">
-            <div className={`h-3 w-3 rounded-full ${statusColors[status] || "bg-gray-400"}`}></div>
-            <span className="text-sm font-medium text-gray-700">
+          <div className="flex items-center gap-2 rounded-full border border-indigo-100 bg-white/80 backdrop-blur-md px-3.5 py-1.5 shadow-sm">
+            <div className={`h-2.5 w-2.5 rounded-full ${statusColors[status] || "bg-gray-400"}`}></div>
+            <span className="text-xs font-bold text-slate-700">
               {statusLabels[status] || status}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="px-6 py-6">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.04fr_0.96fr]">
+      <main className="px-6 py-8 relative z-10">
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.04fr_0.96fr]">
           <section className="space-y-6">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Current Question
-              </p>
-              <p className="mt-3 text-sm font-medium text-slate-500">
-                Question {session.questionIndex} of {session.questionLimit}
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold leading-tight text-gray-900">
-                {currentQuestion}
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-gray-600">
-                You can listen or skip ahead at any time. When you want to answer, start
-                recording and ask Echo Coach to rewrite your response.
-              </p>
-              <div className="mt-6 rounded-2xl bg-slate-950 p-5 text-sm text-slate-200">
-                {isMockMode ? (
-                  <p>
-                    Mock mode is active. The coaching step will use a deterministic sample answer so the UI stays testable.
-                  </p>
-                ) : (
-                  <p>
-                    The live session handles the spoken interviewer. Start recording when you are ready to answer, then ask for coaching after you finish speaking.
-                  </p>
-                )}
+            <div className="rounded-3xl border border-indigo-100 bg-white/60 backdrop-blur-md p-6 shadow-sm flex flex-col justify-between min-h-[16rem]">
+              <div>
+                <span className="inline-flex rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-700 shadow-sm">
+                  Question {session.questionIndex} of {session.questionLimit}
+                </span>
+                <h2 className="mt-4 text-3xl font-extrabold leading-tight text-slate-900 tracking-tight">
+                  {currentQuestion}
+                </h2>
+                <p className="mt-4 text-sm leading-6 font-medium text-slate-500">
+                  Listen to the interviewer or skip ahead when you are ready. Start recording your spoken response and request coaching when finished.
+                </p>
+              </div>
+
+              {/* Dynamic Animated Soundwave Node based on Status */}
+              <div className="mt-6 rounded-2xl bg-slate-950 p-6 relative overflow-hidden flex items-center justify-between text-white shadow-md border border-slate-800">
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-indigo-950/20 to-transparent opacity-50 pointer-events-none"></div>
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/10 border border-white/15">
+                    {/* Ring waves */}
+                    {status === "listening" && (
+                      <>
+                        <div className="pulse-ring"></div>
+                        <div className="pulse-ring pulse-ring-delayed"></div>
+                      </>
+                    )}
+                    {status === "connecting" && (
+                      <div className="pulse-ring border-amber-400"></div>
+                    )}
+                    {status === "analyzing" && (
+                      <div className="absolute inset-0 rounded-full border-2 border-dashed border-indigo-400 animate-spin"></div>
+                    )}
+                    <span className="text-2xl relative z-10">
+                      {status === "connecting" ? "⏳" :
+                       status === "prompting" ? "🗣️" :
+                       status === "listening" ? "🎙️" :
+                       status === "analyzing" ? "🧠" : "🤝"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-300">Agent Interviewer</p>
+                    <p className="text-sm font-semibold text-slate-200 mt-0.5">
+                      {status === "connecting" ? "Connecting to Live Host..." :
+                       status === "prompting" ? "Speaking..." :
+                       status === "listening" ? "Listening to your answer..." :
+                       status === "analyzing" ? "Coaching your answer..." : "Ready for your answer"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Simulated Waveform graphics */}
+                <div className="flex items-end gap-1 h-8 relative z-10">
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-1 rounded-full bg-indigo-400 ${
+                        status === "prompting" || status === "listening" ? "waveform-bar" : "h-2"
+                      }`}
+                      style={{
+                        animationDelay: `${i * 0.15}s`,
+                        animationDuration: `${0.6 + (i % 3) * 0.2}s`,
+                        height: status === "prompting" || status === "listening" ? undefined : "6px"
+                      }}
+                    ></div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Session Flow
+            <div className="rounded-3xl border border-indigo-50 bg-white/40 p-6 shadow-sm backdrop-blur-md">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                Session Guidance
               </p>
-              <div className="mt-4 space-y-3 text-sm text-gray-700">
-                <p>1. Listen to the interview question.</p>
-                <p>2. Tap <span className="font-medium">Start recording answer</span>.</p>
-                <p>3. Deliver your answer out loud.</p>
-                <p>4. Tap <span className="font-medium">Coach this answer</span>.</p>
-                <p>5. Review the rewritten answer and confidence guidance.</p>
-                <p>6. Tap <span className="font-medium">Play polished version</span>.</p>
-                <p>7. Skip ahead whenever you want.</p>
+              <div className="mt-4 grid grid-cols-2 gap-4 text-xs font-medium text-slate-600">
+                <div className="p-3 bg-white/50 rounded-xl border border-indigo-50/50 shadow-sm">
+                  <span className="text-indigo-600 font-bold block mb-1">1. Listen</span>
+                  Hear the spoken question from the host.
+                </div>
+                <div className="p-3 bg-white/50 rounded-xl border border-indigo-50/50 shadow-sm">
+                  <span className="text-indigo-600 font-bold block mb-1">2. Record</span>
+                  Speak naturally into the microphone.
+                </div>
+                <div className="p-3 bg-white/50 rounded-xl border border-indigo-50/50 shadow-sm">
+                  <span className="text-indigo-600 font-bold block mb-1">3. Coach</span>
+                  Get an instant, polished rewrite.
+                </div>
+                <div className="p-3 bg-white/50 rounded-xl border border-indigo-50/50 shadow-sm">
+                  <span className="text-indigo-600 font-bold block mb-1">4. Replay</span>
+                  Listen to the polished version.
+                </div>
               </div>
             </div>
           </section>
 
           <section className="space-y-6">
-            <div className="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                    Latest Coaching
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-gray-900">
-                    {latestCoachingTurn ? "Polished answer ready" : "Waiting for a coached answer"}
-                  </h2>
-                </div>
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-full ${
-                    status === "ready_to_practice"
-                      ? "bg-indigo-100 text-indigo-700"
-                      : status === "analyzing"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  <span className="text-2xl">🗣️</span>
-                </div>
-              </div>
-
-              {!latestCoachingTurn ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-7 text-gray-500">
-                  Finish an answer and tap the coaching button to generate a polished version, targeted feedback, and a role-aware highlight card.
-                </div>
-              ) : (
-                <div className="mt-5 space-y-5">
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                      Original transcript
+            <div className="rounded-3xl border border-indigo-100 bg-white/60 p-6 shadow-sm backdrop-blur-md flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-indigo-100/50 pb-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+                      Latest Coaching
                     </p>
-                    <p className="mt-2 text-sm leading-7 text-gray-700">
-                      <span data-testid="original-transcript">
-                        {latestCoachingTurn.originalTranscript}
-                      </span>
-                    </p>
+                    <h2 className="mt-1 text-2xl font-extrabold text-slate-900 tracking-tight">
+                      {latestCoachingTurn ? "Polished answer ready" : "Waiting for a coached answer"}
+                    </h2>
                   </div>
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-full ${
+                      status === "ready_to_practice"
+                        ? "bg-indigo-100 text-indigo-700"
+                        : status === "analyzing"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-slate-100 text-slate-400"
+                    } shadow-sm border border-indigo-100/30`}
+                  >
+                    <span className="text-xl">🗣️</span>
+                  </div>
+                </div>
 
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="max-w-2xl">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                          Polished answer
-                        </p>
-                        <p className="mt-2 text-lg font-medium leading-8 text-gray-900">
-                          <span data-testid="polished-answer">
-                            {latestCoachingTurn.polishedAnswer}
+                {!latestCoachingTurn ? (
+                  <div className="mt-6 rounded-2xl border border-dashed border-indigo-100 bg-white/30 p-6 text-center text-sm leading-6 font-medium text-slate-500">
+                    Finish delivering your answer, then click <span className="font-semibold text-indigo-900">Coach this answer</span> to generate a polished rewrite, targeted feedback tags, and a personalized role profile.
+                  </div>
+                ) : (
+                  <div className="mt-6 space-y-6">
+                    <div className="rounded-2xl border border-slate-100 bg-white/40 p-4.5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                        Original transcript
+                      </p>
+                      <p className="mt-2 text-sm leading-6 font-medium text-slate-700">
+                        <span data-testid="original-transcript">
+                          {latestCoachingTurn.originalTranscript}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-[-30%] right-[-30%] w-[60%] h-[60%] rounded-full bg-emerald-300/10 pointer-events-none filter blur-xl"></div>
+
+                      <div className="flex flex-col gap-4 relative z-10">
+                        <div className="max-w-2xl">
+                          <span className="inline-flex rounded-full bg-emerald-100/80 border border-emerald-200 px-3 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-800 shadow-sm">
+                            Polished answer
                           </span>
+                          <p className="mt-3 text-lg font-bold leading-8 text-slate-900">
+                            <span data-testid="polished-answer">
+                              {latestCoachingTurn.polishedAnswer}
+                            </span>
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={playPracticeLine}
+                          disabled={
+                            isPlayingPractice ||
+                            isPreparingPracticeAudio ||
+                            isLoadingNextQuestion ||
+                            isEndingSession
+                          }
+                          className="btn-shimmer flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-[0.985] text-white px-5 py-3 text-sm font-bold shadow-md transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="text-base">{isPlayingPractice ? "🔊" : "▶"}</span>
+                          {isPlayingPractice
+                            ? "Playing..."
+                            : isPreparingPracticeAudio
+                            ? "Preparing playback..."
+                            : "Play polished version"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-indigo-50 bg-white/40 p-4 shadow-sm">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                          Improvement tags
                         </p>
-                        <p className="mt-3 text-xs leading-6 text-emerald-900/80">
-                          Hear the stronger spoken version as soon as you are ready to practice it.
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          {latestCoachingTurn.improvementTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 shadow-sm"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-indigo-50 bg-white/40 p-4 shadow-sm">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                          Inferred Role Profile
+                        </p>
+                        <p className="mt-2 text-xs font-bold text-indigo-900">
+                          {latestCoachingTurn.roleLabel || "Professional Candidate"}
+                        </p>
+                        <p className="text-[9px] font-medium text-slate-500 mt-1">
+                          Strength: {latestCoachingTurn.strengthKeyword || "clarity"}
                         </p>
                       </div>
-                      <button
-                        onClick={playPracticeLine}
-                        disabled={
-                          isPlayingPractice ||
-                          isPreparingPracticeAudio ||
-                          isLoadingNextQuestion ||
-                          isEndingSession
-                        }
-                        className="min-w-[11.5rem] rounded-xl bg-emerald-200 px-4 py-3 text-center text-sm font-medium text-emerald-950 shadow-sm transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isPlayingPractice
-                          ? "Playing..."
-                          : isPreparingPracticeAudio
-                          ? "Preparing playback..."
-                          : "Play polished version"}
-                      </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-indigo-50 bg-indigo-50/20 p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-500">
+                        Coach note
+                      </p>
+                      <p className="mt-2 text-xs leading-6 font-medium text-slate-700 font-sans">
+                        {latestCoachingTurn.coachMessage}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="rounded-2xl border border-gray-200 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                      Improvement tags
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {latestCoachingTurn.improvementTags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Coach note
-                    </p>
-                    <p className="mt-2 text-sm leading-7 text-gray-700">
-                      {latestCoachingTurn.coachMessage}
-                    </p>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </section>
         </div>
       </main>
 
-      <footer className="border-t border-gray-200 bg-white px-6 py-6">
-        <div className="mx-auto grid max-w-6xl items-center gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="min-w-0 max-w-3xl text-sm text-gray-500">
+      {/* Floating Action Dashboard Console */}
+      <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-4 pointer-events-none">
+        <div className="pointer-events-auto rounded-3xl border border-white/60 bg-white/75 backdrop-blur-xl p-4.5 shadow-[0_20px_50px_rgba(15,23,42,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="min-w-0 flex-1 text-xs font-semibold text-slate-500 px-2">
             {isEndingSession ? (
-              <span>Building your recap card and saving the session...</span>
+              <span className="flex items-center gap-2 text-indigo-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-ping"></span>
+                Building your recap card and saving session...
+              </span>
             ) : status === "analyzing" ? (
-              <span>Analyzing your answer and preparing the spoken rewrite…</span>
+              <span className="flex items-center gap-2 text-blue-600 font-bold">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-ping"></span>
+                Analyzing answer and preparing rewrite...
+              </span>
             ) : status === "prompting" ? (
-              <span>
-                The interviewer is asking the question. Start recording at any point if
-                you want to answer immediately.
-              </span>
+              <span className="text-slate-500">The interviewer is speaking. Start recording at any point to answer.</span>
             ) : status === "ready" ? (
-              <span>
-                The question has finished. Start recording whenever you are ready to
-                answer.
-              </span>
+              <span className="text-indigo-600 font-bold">Interviewer finished. Start recording whenever you are ready.</span>
             ) : isRecordingAnswer ? (
-              <span>
-                Recording your answer now. When you finish speaking, ask for coaching.
+              <span className="flex items-center gap-2 text-green-600 font-bold">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                Recording your answer... Speak naturally.
               </span>
             ) : isLoadingNextQuestion ? (
-              <span>Loading the next interview question…</span>
-            ) : status === "ready_to_practice" ? (
-              <span>
-                Polished answer ready. Play it back or skip to the next question whenever you want.
+              <span className="flex items-center gap-2 text-indigo-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-ping"></span>
+                Loading next question...
               </span>
+            ) : status === "ready_to_practice" ? (
+              <span className="text-emerald-700 font-bold">Polished answer ready. Replay it or skip to the next question.</span>
             ) : (
-              <span>You can skip to the next question at any time.</span>
+              <span className="text-slate-500 font-medium">Ready for your practice session.</span>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-3 lg:justify-self-end">
+          <div className="flex flex-wrap gap-2.5 shrink-0">
             {!isMockMode && (
               <button
                 onClick={beginAnswerRecording}
@@ -284,7 +359,7 @@ export default function SessionPage() {
                   isLoadingNextQuestion ||
                   isEndingSession
                 }
-                className="min-w-[12rem] rounded-xl bg-slate-900 px-5 py-3 text-center text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn-shimmer rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-[0.97] text-white px-4.5 py-2.5 text-xs font-bold shadow-sm transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isRecordingAnswer ? "Recording answer..." : "Start recording answer"}
               </button>
@@ -298,7 +373,7 @@ export default function SessionPage() {
                 isEndingSession ||
                 (!isMockMode && !isRecordingAnswer)
               }
-              className="min-w-[10.5rem] rounded-xl bg-blue-600 px-5 py-3 text-center text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-shimmer rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white px-4.5 py-2.5 text-xs font-bold shadow-sm transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === "analyzing" ? "Coaching..." : "Coach this answer"}
             </button>
@@ -310,7 +385,7 @@ export default function SessionPage() {
                 status === "connecting" ||
                 isEndingSession
               }
-              className="min-w-[10.5rem] rounded-xl bg-amber-100 px-5 py-3 text-center text-sm font-medium text-amber-800 shadow-sm transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-shimmer rounded-xl bg-amber-100 hover:bg-amber-200 active:scale-[0.97] text-amber-800 px-4.5 py-2.5 text-xs font-bold shadow-sm transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoadingNextQuestion
                 ? "Loading question..."
@@ -326,7 +401,7 @@ export default function SessionPage() {
                 isLoadingNextQuestion ||
                 isEndingSession
               }
-              className="min-w-[9rem] rounded-xl bg-red-100 px-5 py-3 text-center text-sm font-medium text-red-700 shadow-sm transition-colors hover:bg-red-200 disabled:opacity-50"
+              className="btn-shimmer rounded-xl bg-red-100 hover:bg-red-200 active:scale-[0.97] text-red-700 px-4 py-2.5 text-xs font-bold shadow-sm transition-all duration-300 disabled:opacity-50"
             >
               {isEndingSession ? "Building recap..." : "End Session"}
             </button>

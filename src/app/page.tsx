@@ -106,102 +106,138 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center py-8">
+    <div className="min-h-screen bg-slate-50 nordic-grid relative overflow-hidden p-4">
+      {/* Drifting Background Ambient Pastels */}
+      <div className="absolute top-[-15%] left-[-15%] w-[60%] h-[60%] rounded-full bg-indigo-200/35 glow-orb-1 pointer-events-none"></div>
+      <div className="absolute bottom-[-15%] right-[-15%] w-[65%] h-[65%] rounded-full bg-rose-200/25 glow-orb-2 pointer-events-none"></div>
+      <div className="absolute top-[35%] right-[10%] w-[40%] h-[40%] rounded-full bg-sky-200/30 glow-orb-1 pointer-events-none"></div>
+
+      <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center py-8 relative z-10">
         <div className="grid w-full gap-6">
-          <div className="grid gap-6 rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm lg:grid-cols-[1.05fr_0.95fr]">
-            <section className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+          <div className="grid gap-8 rounded-[2rem] glass-card p-8 lg:grid-cols-[1.05fr_0.95fr] transition-shadow duration-500 hover:shadow-xl">
+            <section className="space-y-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-800 shadow-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                   Live Agent MVP
-                </p>
-                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-gray-900">
+                </span>
+                <h1 className="mt-4 text-5xl font-extrabold tracking-tight text-slate-900 bg-gradient-to-r from-slate-900 via-indigo-950 to-indigo-900 bg-clip-text text-transparent leading-tight">
                   Echo Coach
                 </h1>
-                <p className="mt-4 max-w-xl text-lg leading-8 text-gray-600">
+                <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600 font-medium">
                   A live interview expression coach that helps you turn spoken answers into clearer, more natural, and more professional responses.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              <div className="rounded-2xl border border-indigo-100 bg-white/40 p-6 backdrop-blur-md shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-700">
                   Locked Demo Flow
                 </p>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-700">
-                  <li>1. The agent asks one interview question aloud.</li>
-                  <li>2. You answer naturally into the microphone.</li>
-                  <li>3. You tap <span className="font-medium">Coach this answer</span>.</li>
-                  <li>4. Echo Coach rewrites the answer and adds role-aware encouragement.</li>
-                  <li>5. You tap <span className="font-medium">Play polished version</span> to hear the improved answer.</li>
+                <ul className="mt-4 space-y-3.5 text-sm leading-6 text-slate-700 font-medium">
+                  {[
+                    "1. The agent asks one interview question aloud.",
+                    "2. You answer naturally into the microphone.",
+                    "3. You tap Coach this answer.",
+                    "4. Echo Coach rewrites the answer and adds role-aware encouragement.",
+                    "5. You tap Play polished version to hear the improved answer.",
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600 shadow-sm">
+                        ✓
+                      </span>
+                      <span>
+                        {i === 2 ? (
+                          <>You tap <span className="font-semibold text-indigo-950">Coach this answer</span>.</>
+                        ) : i === 4 ? (
+                          <>You tap <span className="font-semibold text-indigo-950">Play polished version</span>.</>
+                        ) : (
+                          step.substring(3)
+                        )}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </section>
 
-            <section className="rounded-[1.75rem] bg-slate-950 p-7 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
-                Interview Practice
-              </p>
-              <h2 className="mt-4 text-2xl font-semibold">
-                One focused scenario, one polished answer
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-300">
-                This MVP is English-only and optimized for a short interview demo. The microphone is required. Camera is intentionally out of scope.
-              </p>
+            <section className="rounded-[1.75rem] bg-gradient-to-br from-slate-900 to-slate-950 p-8 text-white relative overflow-hidden flex flex-col justify-between shadow-lg border border-slate-800">
+              <div className="absolute top-[-30%] right-[-30%] w-[80%] h-[80%] rounded-full bg-indigo-500/10 pointer-events-none filter blur-3xl"></div>
 
-              <div className="mt-8 rounded-2xl bg-white/10 p-5">
-                <p className="text-sm font-medium text-white">What the session does</p>
-                <div className="mt-4 space-y-3 text-sm text-slate-200">
-                  <p>Asks one interview question aloud</p>
-                  <p>Captures your spoken answer</p>
-                  <p>Rewrites it into a stronger response</p>
-                  <p>Plays back the polished answer</p>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-400 font-heading">
+                  Interview Practice
+                </p>
+                <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white leading-tight">
+                  One focused scenario, one polished answer
+                </h2>
+                <p className="mt-4 text-sm leading-7 text-slate-300">
+                  This MVP is English-only and optimized for a short interview demo. The microphone is required. Camera is intentionally out of scope.
+                </p>
+
+                <div className="mt-8 rounded-2xl bg-white/5 border border-white/5 p-6 space-y-4 shadow-inner">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-300">What the session does</p>
+                  <ul className="space-y-3 text-sm text-slate-200 font-medium">
+                    {[
+                      "Asks one interview question aloud",
+                      "Captures your spoken answer",
+                      "Rewrites it into a stronger response",
+                      "Plays back the polished answer",
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-center gap-3">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]"></span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
-              {micError && (
-                <div className="mt-6 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">
-                  {micError}
-                </div>
-              )}
+              <div className="mt-8">
+                {micError && (
+                  <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
+                    {micError}
+                  </div>
+                )}
 
-              <button
-                onClick={handleStart}
-                disabled={isStarting}
-                className="mt-8 flex w-full justify-center rounded-xl bg-white px-4 py-3 text-sm font-medium text-slate-950 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isStarting ? "Checking mic and starting..." : "Start Interview Practice"}
-              </button>
+                <button
+                  onClick={handleStart}
+                  disabled={isStarting}
+                  className="btn-shimmer flex w-full justify-center rounded-xl bg-white px-4 py-3.5 text-sm font-bold text-slate-950 shadow-md transition-all duration-300 hover:bg-slate-100 hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isStarting ? "Checking mic and starting..." : "Start Interview Practice"}
+                </button>
+              </div>
             </section>
           </div>
 
-          <section className="rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <section className="rounded-[2rem] glass-card p-8 shadow-sm">
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-indigo-100/50 pb-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
                   Recent Practice
                 </p>
-                <h2 className="mt-2 text-2xl font-semibold text-gray-900">
+                <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
                   Saved interview recaps
                 </h2>
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm font-medium text-slate-500">
                 Reopen the strongest answers you want to practice again.
               </p>
             </div>
 
             {historyItems.length === 0 ? (
-              <div className="mt-6 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-500">
+              <div className="mt-6 rounded-2xl border border-dashed border-indigo-200 bg-white/30 p-8 text-center text-sm font-medium text-slate-500">
                 No saved sessions yet. Complete one interview round and the recap will appear here.
               </div>
             ) : (
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {historyItems.map((item) => (
                   <Link
                     key={item.sessionId}
                     href={`/session/${item.sessionId}/recap`}
-                    className="rounded-3xl border border-gray-200 bg-gray-50 p-5 transition-colors hover:border-slate-300 hover:bg-white"
+                    className="group rounded-3xl border border-indigo-100 bg-white/40 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:bg-white/70 hover:shadow-md"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600">
                       {new Date(item.updatedAt).toLocaleString([], {
                         month: "short",
                         day: "numeric",
@@ -209,14 +245,17 @@ export default function OnboardingPage() {
                         minute: "2-digit",
                       })}
                     </p>
-                    <p className="mt-4 inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700">
-                      {item.primaryFocus}
-                    </p>
-                    <p className="mt-4 text-sm leading-7 text-gray-700">
+                    <div className="mt-3">
+                      <span className="inline-flex rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
+                        {item.primaryFocus}
+                      </span>
+                    </div>
+                    <p className="mt-4 text-sm leading-7 text-slate-600 font-medium line-clamp-3">
                       {item.polishedAnswerPreview}
                     </p>
-                    <p className="mt-5 text-sm font-medium text-slate-900">
+                    <p className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition-colors group-hover:text-indigo-700">
                       Open recap
+                      <span className="transition-transform group-hover:translate-x-1">→</span>
                     </p>
                   </Link>
                 ))}

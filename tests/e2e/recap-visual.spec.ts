@@ -5,7 +5,7 @@ async function waitForStatus(page: import("@playwright/test").Page, label: strin
 }
 
 test("captures recap card visuals", async ({ page }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/legacy");
 
   await page.getByRole("button", { name: "Start Interview Practice" }).click();
   await expect(page).toHaveURL(/\/session\/[^/]+$/);

@@ -14,6 +14,7 @@
 /coverage
 /playwright-report
 /test-results
+/benchmark-results
 
 # next.js
 /.next/
@@ -34,7 +35,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-client_secret.json
+!.env.example
+client_secret*.json
 
 # vercel
 .vercel

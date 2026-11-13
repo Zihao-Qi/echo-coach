@@ -1,5 +1,28 @@
 # Echo Coach
 
+## Reconstruction preview
+
+The redesigned home is at `/`, the new-graduate practice workspace is at `/practice`, and the original voice demo remains at `/legacy`.
+
+- Six curated starter questions across behavioral, software engineering, and AI/ML.
+- Progressive hints, question-aware structured feedback, and separate retry attempts.
+- [Retry comparison](docs/retry-comparison.md) shows before/after evidence, regressions, and a next focus using the same evaluation request; historical feedback and linked baselines remain accessible.
+- [Targeted follow-ups](docs/follow-up-design.md) offer one optional focused question within that same evaluation. Original/follow-up drafts and retry histories stay separate; saved questions reopen with their historical snapshots. Gemini 4 designed and implemented the UI, followed by lead critique and independent GPT-6.1-Sol/high review.
+- Default demo feedback is illustrative, **not an assessment of correctness**.
+- Coaching now includes separate accuracy, reasoning, structure, and evidence findings. [Gemini evaluation setup](docs/gemini-evaluation.md) covers bounded local testing and the benchmark. The user's local configuration now uses Gemini 3.8 Flash / low thinking; the shared `.env.example` still defaults to mock feedback.
+- Google sign-in via Auth.js, verified-email allowlisting, owner-scoped Firestore repositories, saved-attempt recovery, pagination, and transactional daily evaluation limits are implemented for real mode.
+- Demo mode stores attempts in server memory per signed browser session. They survive a page refresh, but are **not durable or cross-device**.
+- Real Google login can be tested without paid AI/storage: `PRACTICE_AUTH_MODE=google`, `PRACTICE_STORAGE=memory`, `USE_MOCK=true`. The UI labels preview storage and illustrative feedback.
+- Real Google OAuth/Firestore integration requires setup and has not yet been credential-tested. Firebase association is not required.
+- [Recorded-answer demo](docs/recorded-voice-ui.md): record → stop → edit a fixed example transcript → explicitly confirm your draft → separately request feedback. **It does not recognize your speech yet.** Audio goes to this app for validation, not Google. Real transcription and Live conversation remain upcoming. [Capture feasibility results](docs/recorded-voice-feasibility.md) cover the isolated 120-second Chrome test.
+- Run `npm run test:unit` for workflow and API tests; `npm run test:integration` exercises real Next.js session handling with synthetic Auth.js cookies, without calling cloud services.
+
+For real practice, configure Google Web OAuth credentials, `AUTH_SECRET`, canonical `AUTH_URL`, ADC, your email allowlist, `GEMINI_API_KEY`, and `GEMINI_EVALUATION_MODEL`, then set `USE_MOCK=false` (see [.env.example](.env.example) and [cloud setup](docs/cloud-setup.md)). No model is silently selected. Real endpoints require a validated Auth.js session for an allowlisted, verified Google account. **Legacy real-mode endpoints are blocked in production** because their persistence is not owner-scoped.
+
+Plans and audit: [reconstruction plan](docs/reconstruction-plan.md), [current-project review](docs/current-project-review.md), [Opus-reviewed recorded-voice plan](docs/recorded-voice-plan.md).
+
+## Original prototype
+
 `Echo Coach` is a Next.js prototype for a live interview expression coach. The current MVP asks an interview question aloud, captures the user’s spoken answer, rewrites that answer into a clearer and more professional response, and lets the user replay the polished version for practice.
 
 Architecture diagram:
@@ -68,9 +91,11 @@ npm run test:e2e
 
 The checked-in Playwright suite forces `USE_MOCK=true` so browser tests stay deterministic and do not depend on cloud credentials.
 
-## Cloud Run Deployment
+## Original Cloud Run Deployment Reference
 
-The app is ready to deploy to Cloud Run with Docker.
+**Historical prototype instructions below are not the reconstructed app's release checklist.** Use [docs/cloud-setup.md](docs/cloud-setup.md) for private practice requirements. No reconstructed cloud deployment has been verified yet. Legacy real-mode API calls are blocked in production.
+
+The container uses Cloud Run-compatible standalone Next.js output.
 
 Required runtime environment variables:
 - `USE_MOCK=false`

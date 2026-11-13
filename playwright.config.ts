@@ -15,6 +15,7 @@ export default defineConfig({
       name: "chromium",
       use: { 
         ...devices["Desktop Chrome"],
+        channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
         launchOptions: {
           args: [
             "--use-fake-ui-for-media-stream",
@@ -25,9 +26,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && PORT=3100 USE_MOCK=true npm run start:test",
+    command: "npm run build && PORT=3100 AUTH_URL=http://127.0.0.1:3100 USE_MOCK=true PRACTICE_AUTH_MODE=demo PRACTICE_STORAGE=memory PRACTICE_TRANSCRIPTION_MODE=demo ALLOW_LOCAL_TRANSCRIPTION=false npm run start:test",
     url: "http://127.0.0.1:3100",
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
 });

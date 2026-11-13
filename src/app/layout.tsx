@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CoachProvider } from "../providers/CoachProvider";
+import { LegacyCoachBoundary } from "../providers/LegacyCoachBoundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <CoachProvider>{children}</CoachProvider>
+        <LegacyCoachBoundary>{children}</LegacyCoachBoundary>
       </body>
     </html>
   );

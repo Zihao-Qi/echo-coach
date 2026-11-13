@@ -8,7 +8,7 @@ test.describe("Echo Coach local mock flow", () => {
   test("completes the interview rewrite loop and keeps recap aligned with the coached answer", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/legacy");
 
     await page.getByRole("button", { name: "Start Interview Practice" }).click();
 
@@ -36,6 +36,7 @@ test.describe("Echo Coach local mock flow", () => {
       })
     ).toBeVisible();
     await expect(page.getByText("Question 2 of 3")).toBeVisible();
+    await waitForStatus(page, "Ready to answer");
 
     await page.getByRole("button", { name: "Coach this answer" }).click();
     await waitForStatus(page, "Ready to Practice");
@@ -70,7 +71,7 @@ test.describe("Echo Coach local mock flow", () => {
     expect(recapFocus).toContain("More concrete example");
 
     await page.getByRole("link", { name: "Start New Session" }).click();
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL("/legacy");
     await expect(page.getByRole("heading", { name: "Saved interview recaps" })).toBeVisible();
     await expect(page.getByText("More concrete example")).toBeVisible();
     await page.getByRole("link", { name: /Open recap/ }).first().click();
@@ -88,7 +89,7 @@ test.describe("Echo Coach local mock flow", () => {
   test("keeps the recap route working after refresh because recap is persisted", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/legacy");
     await page.getByRole("button", { name: "Start Interview Practice" }).click();
 
     await expect(page).toHaveURL(/\/session\/[^/]+$/);
@@ -97,6 +98,7 @@ test.describe("Echo Coach local mock flow", () => {
     await expect(page.getByRole("button", { name: "Next question" })).toBeEnabled();
     await page.getByRole("button", { name: "Next question" }).click();
     await expect(page.getByText("Question 2 of 3")).toBeVisible();
+    await waitForStatus(page, "Ready to answer");
 
     await page.getByRole("button", { name: "Coach this answer" }).click();
     await waitForStatus(page, "Ready to Practice");

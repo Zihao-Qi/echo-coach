@@ -9,14 +9,24 @@
     "start": "next start",
     "start:test": "next start --hostname 127.0.0.1 --port ${PORT:-3000}",
     "lint": "eslint",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
+    "benchmark:coaching": "tsx scripts/benchmark-coaching.ts",
+    "benchmark:recording": "tsx scripts/benchmark-recording.ts",
+    "benchmark:transcription:prepare": "tsx scripts/prepare-transcription.ts",
+    "benchmark:transcription": "tsx scripts/benchmark-transcription.ts",
+    "test:integration": "npm run build && tsx --test tests/integration/*.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.3.1",
     "@google/genai": "^1.45.0",
-    "next": "16.1.6",
+    "google-auth-library": "^11.1.0",
+    "next": "^16.3.8",
+    "next-auth": "5.0.0-beta.32",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -25,8 +35,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

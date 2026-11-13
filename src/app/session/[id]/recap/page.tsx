@@ -378,7 +378,7 @@ export default function RecapPage() {
 
         <div className="mt-10 flex justify-center">
           <Link
-            href="/"
+            href="/legacy"
             className="btn-shimmer rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white px-8 py-3.5 text-sm font-bold shadow-md transition-all duration-300"
           >
             Start New Session

@@ -36,6 +36,7 @@ test.describe("Echo Coach local mock flow", () => {
       })
     ).toBeVisible();
     await expect(page.getByText("Question 2 of 3")).toBeVisible();
+    await waitForStatus(page, "Ready to answer");
 
     await page.getByRole("button", { name: "Coach this answer" }).click();
     await waitForStatus(page, "Ready to Practice");
@@ -97,6 +98,7 @@ test.describe("Echo Coach local mock flow", () => {
     await expect(page.getByRole("button", { name: "Next question" })).toBeEnabled();
     await page.getByRole("button", { name: "Next question" }).click();
     await expect(page.getByText("Question 2 of 3")).toBeVisible();
+    await waitForStatus(page, "Ready to answer");
 
     await page.getByRole("button", { name: "Coach this answer" }).click();
     await waitForStatus(page, "Ready to Practice");

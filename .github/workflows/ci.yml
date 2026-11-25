@@ -98,3 +98,19 @@ jobs:
           check_page / 'Good answers are built.'
           check_page /practice 'Your private practice space.'
           echo "Commit $(git rev-parse HEAD); image $image; Node $node_version; context markers excluded." | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify the typed-only public demo over HTTPS
+        run: |
+          docker build --no-cache --build-arg NEXT_PUBLIC_ECHO_PUBLIC_DEMO=true -t echo-coach:public-demo-ci .
+          bash tests/public-demo/run-image.sh "$(docker image inspect --format '{{.Id}}' echo-coach:public-demo-ci)"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: public-demo-browser-failure
+          path: test-results/
+          retention-days: 7

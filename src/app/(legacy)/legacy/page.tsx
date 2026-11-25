@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCoachSession } from "../../providers/CoachProvider";
-import { DEFAULT_LANGUAGE, MVP_SCENARIO } from "../../lib/coach-config";
-import { listRecapSnapshotHistory } from "../../lib/recap-storage";
-import { SessionHistoryItem } from "../../types/coach";
+import { useCoachSession } from "../../../providers/CoachProvider";
+import { DEFAULT_LANGUAGE, MVP_SCENARIO } from "../../../lib/coach-config";
+import { listRecapSnapshotHistory } from "../../../lib/recap-storage";
+import { SessionHistoryItem } from "../../../types/coach";
 
 export default function OnboardingPage() {
   const router = useRouter();

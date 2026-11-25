@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { LegacyCoachBoundary } from "../providers/LegacyCoachBoundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Echo Coach",
-  description: "Live interview expression coach for spoken grammar, phrasing, and professional answers",
+  description: "Practice behavioral, software engineering, and AI/ML interview answers, get specific feedback, and try again.",
 };
 
 export default function RootLayout({
@@ -14,9 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        <LegacyCoachBoundary>{children}</LegacyCoachBoundary>
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

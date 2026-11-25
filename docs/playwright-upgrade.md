@@ -1,10 +1,10 @@
 # Upgrade Playwright and unpin CI from ubuntu-24.04
 
-**Status:** Implemented on branch `playwright-upgrade`. Spec reviewed by Gemini 4 Neon High (approve with changes, then approve) and approved by the owner, who chose `ubuntu-latest`. Tracks issue #5.
+**Status:** Merged in PR #6. Spec reviewed by Gemini 4 Neon High (approve with changes, then approve) and approved by the owner, who chose `ubuntu-latest`. Tracks issue #5.
 
 **Local results:** Lockfile diff matches step 1 exactly. `npx playwright --version` prints 1.65.1. Lint, `tsc`, 84 unit and 3 integration tests passed. Serial e2e: 38 passed with bundled Chromium and 38 passed with installed Chrome (`PLAYWRIGHT_CHANNEL=chrome`).
 
-**CI results:** PR #6 run `45705076734`: both jobs ran on `Image: ubuntu-26.04` (Ubuntu 26.04.1 LTS) and passed. `setup-node` resolved Node v22.23.5 from the tool cache, and `npm ci` succeeded. `npx playwright install --with-deps chromium` downloaded Chrome for Testing and Chrome Headless Shell 159.0.8154.6 with no unsupported-OS fallback. The e2e job reported `38 passed` in about 3 minutes, well within the 20-minute timeout. Each job logs one warning that `actions/checkout@v4` and `actions/setup-node@v4` target the deprecated Node.js 20 actions runtime. The same warning appears on the earlier 24.04 runs (PR #4), so this change didn't introduce it. Upgrading the actions is out of scope. The post-merge `push` run on `main` is still to be checked.
+**CI results:** PR #6 run `45705076734`: both jobs ran on `Image: ubuntu-26.04` (Ubuntu 26.04.1 LTS) and passed. `setup-node` resolved Node v22.23.5 from the tool cache, and `npm ci` succeeded. `npx playwright install --with-deps chromium` downloaded Chrome for Testing and Chrome Headless Shell 159.0.8154.6 with no unsupported-OS fallback. The e2e job reported `38 passed` in about 3 minutes, well within the 20-minute timeout. Each job logs one warning that `actions/checkout@v4` and `actions/setup-node@v4` target the deprecated Node.js 20 actions runtime. The same warning appears on the earlier 24.04 runs (PR #4), so this change didn't introduce it. Upgrading the actions is out of scope. After merge, the `push` run on `main` (run `45707587921`, commit `a34f54a`) passed both jobs on `ubuntu-26.04`, with `38 passed` in e2e. Issue #5 closed automatically from the merge.
 
 ## Problem
 

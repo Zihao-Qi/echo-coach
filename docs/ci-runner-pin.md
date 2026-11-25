@@ -1,6 +1,6 @@
 # Pin CI to the Ubuntu 24.04 runner
 
-**Status:** Implemented on branch `ci-pin-ubuntu-24.04`. Spec reviewed twice by Gemini 4 Neon High (approve with changes; findings applied) and approved by the owner. 
+**Status:** Implemented on branch `ci-pin-ubuntu-24.04`. Spec reviewed twice by Gemini 4 Neon High (approve with changes; findings applied) and approved by the owner.
 
 **Results:** PR #4 run `45683798411`: both jobs ran on `Image: ubuntu-24.04` and passed. `npm ci` and `npx playwright install --with-deps chromium` succeeded, and the e2e job reported `38 passed` with none failed or skipped. Only `.github/workflows/ci.yml` (two `runs-on` lines) and this spec changed. The post-merge `push` run on `main` is still to be checked.
 

@@ -2,6 +2,7 @@ import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { practiceAuthMode, practiceStorageMode } from "../config/practice-runtime";
 import { allowedPracticeEmails, authConfigurationError } from "./google-policy";
 import { readPracticeSession, type PracticeSessionReader } from "./auth-session";
+import { PUBLIC_DEMO_BUILD } from "../config/public-demo";
 
 export class AccessError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
@@ -30,7 +31,7 @@ export function readDemoOwner(request: Request) {
 export async function requirePracticeOwner(request: Request, readSession: PracticeSessionReader = readPracticeSession): Promise<string> {
   if (isDemoMode()) {
     const owner = readDemoOwner(request);
-    if (!owner) throw new AccessError("Initialize a demo session before practicing.", 401);
+    if (!owner) throw new AccessError(PUBLIC_DEMO_BUILD ? "The demo session expired. Your draft is still here." : "Initialize a demo session before practicing.", 401);
     return owner;
   }
   const storage = practiceStorageMode();
@@ -45,7 +46,12 @@ export async function requirePracticeOwner(request: Request, readSession: Practi
 }
 
 export function requirePracticeWriteOrigin(request: Request) {
-  if (isDemoMode()) return;
+  if (isDemoMode()) {
+    if (PUBLIC_DEMO_BUILD && (request.headers.get("origin") !== process.env.AUTH_URL || request.headers.get("sec-fetch-site") === "cross-site")) {
+      throw new AccessError("Cross-origin practice writes are not permitted.", 403);
+    }
+    return;
+  }
   const configurationError = authConfigurationError();
   if (configurationError) throw new AccessError(configurationError, 503);
   const allowedOrigin = new URL(process.env.AUTH_URL!).origin;

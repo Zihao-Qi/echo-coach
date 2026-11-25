@@ -2,13 +2,14 @@ import { AccessError, DEMO_COOKIE, isDemoMode, newDemoSession, readDemoOwner, re
 import { localGeminiRequested } from "../../../../infrastructure/ai/gemini/local-evaluation";
 import { isMockEvaluationMode, practiceStorageMode } from "../../../../infrastructure/config/practice-runtime";
 import { transcriptionCapability } from "../../../../infrastructure/config/transcription-runtime";
+import { PUBLIC_DEMO_BUILD } from "../../../../infrastructure/config/public-demo";
 import { practiceError, practiceJson } from "../../../../infrastructure/http/practice-http";
 
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const storage = practiceStorageMode();
-    const transcription = transcriptionCapability();
+    const transcription = PUBLIC_DEMO_BUILD ? { mode: "disabled", available: false } : transcriptionCapability();
     const mockEvaluation = isMockEvaluationMode();
     const localGemini = !mockEvaluation && localGeminiRequested() && process.env.NODE_ENV === "development";
     if (isDemoMode()) {

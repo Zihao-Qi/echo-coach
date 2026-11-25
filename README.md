@@ -1,5 +1,9 @@
 # Echo Coach
 
+## Public demo (not launched)
+
+The [public demo profile](docs/public-demo-readiness.md) offers typed practice with sample feedback, not a personal assessment. It has no account, voice recording, legacy interview, or live model calls. History is temporary and can reset. The features below describe the repository’s other local or private profiles, not the public demo.
+
 ## Reconstruction preview
 
 The redesigned home is at `/`, the new-graduate practice workspace is at `/practice`, and the original voice demo remains at `/legacy`.

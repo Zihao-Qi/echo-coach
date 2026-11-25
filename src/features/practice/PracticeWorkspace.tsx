@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PUBLIC_DEMO_BUILD, SAMPLE_FEEDBACK_NOTICE } from "../../infrastructure/config/public-demo";
 import { starterQuestions } from "../../content/questions/starter-bank";
 import type { AttemptRecord } from "../../domain/interview/attempt-record";
 import type { AnswerAttempt, InterviewQuestion, InterviewTrack } from "../../domain/interview/practice";
@@ -42,7 +43,7 @@ export function PracticeWorkspace({
             {access.error}
           </p>
         )}
-        {access.mode === "authjs" && (
+        {!PUBLIC_DEMO_BUILD && access.mode === "authjs" && (
           <button className={`${button} mt-6`} onClick={() => void access.login()}>
             Sign in with Google
           </button>
@@ -198,7 +199,7 @@ function PracticeSessionView({
             >
               Home
             </Link>
-            <Link
+            {!PUBLIC_DEMO_BUILD && <Link
               className={`${button} ${hardLocked ? "pointer-events-none opacity-50" : ""}`}
               href="/legacy"
               aria-disabled={hardLocked}
@@ -219,8 +220,8 @@ function PracticeSessionView({
               }}
             >
               Original voice demo
-            </Link>
-            {access.user && (
+            </Link>}
+            {!PUBLIC_DEMO_BUILD && access.user && (
               <button
                 className={button}
                 disabled={hardLocked}
@@ -232,10 +233,10 @@ function PracticeSessionView({
           </div>
         </header>
         <p className="my-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {access.storage === "memory"
+          {PUBLIC_DEMO_BUILD ? "Public demo · History is temporary and may disappear after inactivity or a restart. Use made-up examples and don’t include personal or confidential details." : access.storage === "memory"
             ? `${access.mode === "demo" ? "Demo" : "Google sign-in preview"} · Submitted history lives in this server process only and is lost on restart; cross-device durability is not enabled.`
             : "Private practice · Submitted answers are saved to your account before evaluation. Drafts are not saved until submitted."}{" "}
-          {access.mockEvaluation &&
+          {PUBLIC_DEMO_BUILD ? SAMPLE_FEEDBACK_NOTICE : access.mockEvaluation &&
             "Feedback is illustrative, not a correctness assessment. No Gemini requests are made."}
         </p>
         {access.localGemini && (
@@ -408,12 +409,12 @@ function PracticeSessionView({
               ) : (
                 <div className="my-4 border-t border-slate-100" />
               )}
-              <VoiceAnswerPanel
+              {!PUBLIC_DEMO_BUILD && <VoiceAnswerPanel
                 transcriptionAccess={access.transcription}
                 voice={voice}
                 evaluationPending={pending}
                 hasExistingTypedDraft={answer.trim().length > 0}
-              />
+              />}
               <form
                 onSubmit={(event) => {
                   event.preventDefault();

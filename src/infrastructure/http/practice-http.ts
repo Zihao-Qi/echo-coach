@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AccessError } from "../auth/practice-access";
+import { DemoCapacityError } from "../persistence/memory-attempt-repository";
 import { PracticeWorkflowError } from "../../application/workflows/submit-practice-attempt";
 
 export class RequestError extends Error {
@@ -27,6 +28,10 @@ export function practiceJson(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { "Cache-Control": "private, no-store", "Vary": "Cookie, Authorization" } });
 }
 export function practiceError(error: unknown) {
+  if (error instanceof DemoCapacityError) {
+    console.info("Public demo refused a write at capacity:", error.scope);
+    return practiceJson({ error: error.message }, error.scope === "visitor" ? 429 : 503);
+  }
   if (error instanceof AccessError || error instanceof RequestError || error instanceof PracticeWorkflowError) return practiceJson({ error: error.message }, error.status);
   console.error("Practice request failed:", error instanceof Error ? error.name : "UnknownError");
   return practiceJson({ error: "Practice storage is unavailable. Please keep your draft and try again." }, 503);

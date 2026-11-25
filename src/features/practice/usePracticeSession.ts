@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PUBLIC_DEMO_BUILD } from "../../infrastructure/config/public-demo";
 import { starterQuestions } from "../../content/questions/starter-bank";
 import { orderAttempts } from "../../domain/interview/attempt-order";
 import { completedAttempt, type AttemptRecord } from "../../domain/interview/attempt-record";
@@ -379,7 +380,21 @@ export function usePracticeSession({
         body: JSON.stringify(payloadBody),
         signal: controller.signal,
       });
-      const payload = (await response.json()) as { attempt?: AnswerAttempt; error?: string };
+      const payload = (await response.json()) as { attempt?: AnswerAttempt; error?: string; code?: string };
+      if (PUBLIC_DEMO_BUILD && (response.status === 401 || payload.code === "demo-history-reset")) {
+        if (response.status === 401) {
+          const fresh = await fetch("/api/practice/access", { signal: controller.signal });
+          if (!fresh.ok) throw new Error("The demo session expired and could not be restarted yet. Your draft is still here.");
+        }
+        setSelectedAttempt(null);
+        submissionCacheRef.current = {};
+        const message = target.kind === "followup"
+          ? "The original answer for this follow-up is no longer available. Your draft is still here; return to the original question to start again."
+          : "The demo session reset. Your draft is still here. Submit again when you’re ready.";
+        await history.load(controller.signal);
+        if (!controller.signal.aborted) setError(message);
+        return;
+      }
       if (!response.ok || !payload.attempt) throw new Error(payload.error || "Evaluation failed.");
       history.upsert({ ...payload.attempt, status: "completed" });
       setSelectedAttempt(payload.attempt);

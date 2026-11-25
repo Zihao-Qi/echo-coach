@@ -54,3 +54,45 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  image:
+    name: Release image smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the Docker build context
+        run: |
+          mkdir -p benchmark-results
+          touch .env.local benchmark-results/ci-marker
+          # Inspect what Docker actually receives, not just the final app layer.
+          docker build -f - --output "type=local,dest=$RUNNER_TEMP/context" . <<'EOF'
+          FROM scratch
+          COPY . /context/
+          EOF
+          test -f "$RUNNER_TEMP/context/context/package.json"
+          test ! -e "$RUNNER_TEMP/context/context/.env.local"
+          test ! -e "$RUNNER_TEMP/context/context/benchmark-results/ci-marker"
+      - name: Build release image and check both pages
+        run: |
+          docker build --no-cache -t echo-coach:ci .
+          image=$(docker image inspect --format '{{.Id}}' echo-coach:ci)
+          node_version=$(docker run --rm "$image" node --version)
+          [[ "$node_version" == v22.* ]]
+          docker run -d --name echo-demo -p 127.0.0.1:8080:8080 \
+            -e HOSTNAME=0.0.0.0 -e AUTH_URL=http://127.0.0.1:8080 \
+            -e USE_MOCK=true -e PRACTICE_AUTH_MODE=demo -e PRACTICE_STORAGE=memory \
+            -e PRACTICE_TRANSCRIPTION_MODE=demo -e ALLOW_LOCAL_TRANSCRIPTION=false \
+            -e ALLOW_LOCAL_GEMINI=false "$image"
+          trap 'docker logs echo-demo; docker rm -f echo-demo' EXIT
+          check_page() {
+            status=$(curl --silent --show-error --retry 10 --retry-connrefused \
+              --retry-delay 1 --max-time 10 --output "$RUNNER_TEMP/page" \
+              --write-out '%{http_code}' "http://127.0.0.1:8080$1")
+            test "$status" = 200
+            grep -Fq "$2" "$RUNNER_TEMP/page"
+            echo "$1: HTTP $status, found '$2'" >> "$GITHUB_STEP_SUMMARY"
+          }
+          check_page / 'Good answers are built.'
+          check_page /practice 'Your private practice space.'
+          echo "Commit $(git rev-parse HEAD); image $image; Node $node_version; context markers excluded." >> "$GITHUB_STEP_SUMMARY"

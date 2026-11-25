@@ -64,7 +64,7 @@ jobs:
       - name: Check the Docker build context
         run: |
           mkdir -p benchmark-results
-          touch .env.local benchmark-results/ci-marker
+          touch .env.local benchmark-results/ci-marker scripts/ci-marker benchmarks/ci-marker
           # Inspect what Docker actually receives, not just the final app layer.
           docker build -f - --output "type=local,dest=$RUNNER_TEMP/context" . <<'EOF'
           FROM scratch
@@ -72,7 +72,9 @@ jobs:
           EOF
           test -f "$RUNNER_TEMP/context/context/package.json"
           test ! -e "$RUNNER_TEMP/context/context/.env.local"
-          test ! -e "$RUNNER_TEMP/context/context/benchmark-results/ci-marker"
+          for dir in benchmark-results scripts benchmarks; do
+            test ! -e "$RUNNER_TEMP/context/context/$dir/ci-marker"
+          done
       - name: Build release image and check both pages
         run: |
           docker build --no-cache -t echo-coach:ci .
@@ -91,8 +93,8 @@ jobs:
               --write-out '%{http_code}' "http://127.0.0.1:8080$1")
             test "$status" = 200
             grep -Fq "$2" "$RUNNER_TEMP/page"
-            echo "$1: HTTP $status, found '$2'" >> "$GITHUB_STEP_SUMMARY"
+            echo "$1: HTTP $status, found '$2'" | tee -a "$GITHUB_STEP_SUMMARY"
           }
           check_page / 'Good answers are built.'
           check_page /practice 'Your private practice space.'
-          echo "Commit $(git rev-parse HEAD); image $image; Node $node_version; context markers excluded." >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit $(git rev-parse HEAD); image $image; Node $node_version; context markers excluded." | tee -a "$GITHUB_STEP_SUMMARY"

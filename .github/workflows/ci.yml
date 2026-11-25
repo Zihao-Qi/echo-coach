@@ -88,8 +88,8 @@ jobs:
             -e ALLOW_LOCAL_GEMINI=false "$image"
           trap 'docker logs echo-demo; docker rm -f echo-demo' EXIT
           check_page() {
-            status=$(curl --silent --show-error --retry 10 --retry-connrefused \
-              --retry-delay 1 --max-time 10 --output "$RUNNER_TEMP/page" \
+            status=$(curl --silent --show-error --retry 30 --retry-all-errors \
+              --retry-delay 1 --retry-max-time 60 --max-time 10 --output "$RUNNER_TEMP/page" \
               --write-out '%{http_code}' "http://127.0.0.1:8080$1")
             test "$status" = 200
             grep -Fq "$2" "$RUNNER_TEMP/page"

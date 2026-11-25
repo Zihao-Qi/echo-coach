@@ -19,7 +19,7 @@ env:
 jobs:
   checks:
     name: Lint, typecheck, unit & integration
-    runs-on: ubuntu-24.04 # Pinned: Playwright 1.58.2 can't install on ubuntu-latest (26.04). See docs/ci-runner-pin.md.
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ubuntu-24.04 # Pinned: Playwright 1.58.2 can't install on ubuntu-latest (26.04). See docs/ci-runner-pin.md.
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

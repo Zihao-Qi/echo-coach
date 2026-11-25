@@ -3,6 +3,9 @@
 node_modules
 test-results
 playwright-report
+benchmark-results
+benchmarks
+scripts
 tests
 .env*
 client_secret*.json

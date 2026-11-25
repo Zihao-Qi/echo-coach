@@ -4,9 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCoachSession } from "../../../../providers/CoachProvider";
-import { loadRecapSnapshot } from "../../../../lib/recap-storage";
-import { SessionRecapPayload } from "../../../../types/coach";
+import { useCoachSession } from "../../../../../providers/CoachProvider";
+import { loadRecapSnapshot } from "../../../../../lib/recap-storage";
+import { SessionRecapPayload } from "../../../../../types/coach";
 
 const MIN_CARD_REVEAL_DELAY_MS = 2000;
 

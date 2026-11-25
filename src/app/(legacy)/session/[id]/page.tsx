@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCoachSession } from "../../../providers/CoachProvider";
+import { useCoachSession } from "../../../../providers/CoachProvider";
 
 export default function SessionPage() {
   const router = useRouter();

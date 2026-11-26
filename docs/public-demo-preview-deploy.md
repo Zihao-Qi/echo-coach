@@ -2,7 +2,7 @@
 
 ## Preview results (2026-11-25, before launch)
 
-- **Budget:** `echo-490312 demo $5 monthly` created by CLI (50/90/100% of actual spend; default billing-admin email). This deviates from the plan above: the CLI needed `billingbudgets.googleapis.com`. Besides the two planned APIs (Artifact Registry, Cloud Build), the Billing Budgets and IAP APIs are now enabled too. Whether the owner's inbox receives the alert email has not been verified. An existing, separate monthly budget alert was left unchanged.
+- **Budget:** `echo-490312 demo $5 monthly` created by CLI (50/90/100% of actual spend; default billing-admin email). This deviates from the plan below: the CLI needed `billingbudgets.googleapis.com`, which was enabled in addition to the two planned APIs (Artifact Registry and Cloud Build). Whether the owner's inbox receives the alert email has not been verified. An existing, separate monthly budget alert was left unchanged.
 - **Build:** Cloud Build `0d6c1cf1-e8fe-4109-80f7-c878a5aabfb8` from `git archive f471413`, on the pinned base `be979e55…bd6eb` (matching CI). Image `us-central1-docker.pkg.dev/echo-490312/echo-demo/echo-coach-demo@sha256:3e78d8d3df7bec0878607e0a515c1ca50ea408665fde3d10ce956b8e0fb667d8`.
 - **Service:** `echo-coach-demo`, revision `echo-coach-demo-00002-lbj`, 100% of traffic, at `https://echo-coach-demo-189032457820.us-central1.run.app`.
   - Settings: revision max 1 / min 0, service-level max set to 1 (the Console had left 20), request-based billing (CPU throttled).

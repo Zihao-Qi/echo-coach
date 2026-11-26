@@ -9,7 +9,7 @@ for (const [id, answer] of [
   test(`new practice drill ${id} exposes staged hints and evaluates the selected question`, async ({ page }) => {
     const q = findQuestion(id)!;
     await page.goto(`/practice?track=${q.track}`);
-    await page.getByRole("button", { name: `${q.competency} 0 attempts`, exact: true }).click();
+    await page.getByRole("button", { name: q.competency, exact: true }).click();
     await expect(page.getByRole("heading", { name: q.prompt, exact: true })).toBeVisible();
     const firstHint = page.getByText(`Hint 1: ${q.hints[0]}`, { exact: true });
     const secondHint = page.getByText(`Hint 2: ${q.hints[1]}`, { exact: true });
@@ -25,6 +25,7 @@ for (const [id, answer] of [
     const response = await feedback;
     expect(response.ok()).toBe(true);
     expect((await response.json()).attempt).toMatchObject({ questionId: id, answer, provenance: { mode: "demo" } });
+    await page.getByRole("button", { name:"Edit answer" }).click();
     await expect(page.getByRole("button", { name: "Evaluate my retry", exact: true })).toBeEnabled();
   });
 }
@@ -33,33 +34,36 @@ test("text practice reveals hints, preserves retries, and does not preload legac
   const legacySpeechCalls: string[] = [];
   page.on("request", (request) => { if (request.url().includes("/api/session/speak")) legacySpeechCalls.push(request.url()); });
   await page.goto("/practice");
-  await expect(page.getByRole("heading", { name: "Build a better answer." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: findQuestion("behavioral-project")!.prompt })).toBeVisible();
   await page.getByRole("button", { name: "Give me a hint" }).click();
   await expect(page.getByText(/Hint 1:/)).toBeVisible();
   const first = "I built a course project and implemented the API with tests for invalid inputs.";
   await page.getByLabel("Your answer", { exact: true }).fill(first);
-  await page.getByRole("button", { name: "Get feedback" }).click();
-  await expect(page.getByText("Illustrative demo feedback", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Content accuracy", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Reasoning", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Structure and clarity", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Specific evidence", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Get feedback" }).press("Enter");
+  await expect(page.getByRole("heading", { name:"Sample feedback" })).toBeFocused();
+  await expect(page.getByLabel("Your answer", {exact:true})).toHaveCount(0);
+  await expect(page.getByRole("heading", {name:"Structure outline"})).toBeVisible();
+  await page.getByRole("button", {name:"Retry original answer"}).click();
+  await expect(page.getByLabel("Your answer", {exact:true})).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Criteria", exact: true })).toHaveCount(0);
   await page.getByLabel("Your answer", { exact: true }).fill(`${first} I learned to test failures before deployment.`);
   await page.getByRole("button", { name: "Evaluate my retry" }).click();
-  await expect(page.getByRole("heading", { name: "Attempt 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Attempt 2 (current)", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Illustrative comparison only");
-  await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("What changed since Attempt 1?");
+  await expect(page.getByRole("region", { name: "Retry feedback" })).not.toContainText("Illustrative comparison only");
+  await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Focus for the next retry:");
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Attempt 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Attempt 2 (current)", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("What changed since Attempt 1?");
+  await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Focus for the next retry:");
+  await page.getByRole("button", { name:"Edit answer" }).click();
   // Submitted attempts survive refresh in the demo server; unsubmitted drafts do not.
   await page.getByLabel("Your answer", { exact: true }).fill(`${first} I learned to test failures before deployment.`);
   expect(legacySpeechCalls).toEqual([]);
   await page.getByRole("button", { name: "AI / ML", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Your model performs very well offline/ })).toBeVisible();
   await page.getByRole("button", { name: "Behavioral", exact: true }).click();
+  await page.getByRole("button", { name:"Edit answer" }).click();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(`${first} I learned to test failures before deployment.`);
 });
 

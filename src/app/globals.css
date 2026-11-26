@@ -19,6 +19,49 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@theme {
+  --color-canvas: #f7f5f0;
+  --color-card: #ffffff;
+  --color-pebble: #efece6;
+  --color-line: #e0dcd3;
+  --color-line-strong: #c8c3b8;
+  --color-ink: #1c1b19;
+  --color-ink-hover: #33312d;
+  --color-body: #44423d;
+  --color-muted: #5c5952;
+  --color-marigold: #995300;
+  --color-marigold-hover: #7d4300;
+  --color-night: #161513;
+  --color-night-inset: #22201d;
+  --color-night-muted: #cfcac2;
+  --color-bright: #f2a93b;
+  --color-success: #235b3a;
+  --color-success-tint: #ecf3ee;
+  --color-success-line: #bdd4c4;
+  --color-danger: #9a1c2e;
+  --color-danger-tint: #fdf2f4;
+  --color-danger-line: #f2bdc5;
+  --color-disabled: #e6e2da;
+  --color-disabled-text: #504d47;
+}
+@theme inline { --font-display: var(--font-outfit), system-ui, sans-serif; }
+.refresh { @apply min-h-screen bg-canvas px-4 py-5 text-ink sm:px-8; font-family: var(--font-inter), system-ui, sans-serif; }
+.refresh :is(a, button, select, summary) { min-height: 44px; }
+.refresh textarea::placeholder { color: var(--color-muted); opacity: 1; }
+.refresh :is(a, button, select, summary, textarea):focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+.refresh :is(button, select, textarea):disabled, .refresh [aria-disabled=true] { @apply cursor-not-allowed border-line-strong bg-disabled text-disabled-text; }
+@layer components {
+  .shell { @apply mx-auto max-w-5xl; }
+  .panel { @apply rounded-3xl border border-line bg-card p-5 sm:p-7; }
+  .action, .primary, .nav-link, .pill { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold; }
+  .action { @apply border border-ink bg-card hover:bg-pebble; }
+  .primary, .pill[aria-pressed=true] { @apply border border-ink bg-ink text-white hover:bg-ink-hover; }
+  .nav-link { @apply px-3 hover:text-marigold hover:underline; }
+  .pill:not([aria-pressed=true]) { @apply border border-line-strong bg-card hover:bg-pebble; }
+  .eyeline { @apply text-xs font-bold uppercase tracking-wider text-muted; }
+  .input-field { @apply w-full rounded-2xl border border-muted bg-card p-4 text-base leading-7 text-ink; }
+}
+
 /* Base Nordic Background Patterns */
 .nordic-grid {
   background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
@@ -130,7 +173,7 @@ body {
 }
 
 /* Heading Typography */
-h1, h2, h3, .font-heading {
+.legacy :is(h1, h2, h3, .font-heading) {
   font-family: var(--font-outfit), var(--font-plus-jakarta-sans), system-ui, sans-serif;
   letter-spacing: -0.02em;
 }

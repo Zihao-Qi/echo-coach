@@ -25,7 +25,9 @@ test("saved attempts are idempotent, private to the demo session, and recoverabl
   const malformed = await page.request.get("/api/practice/attempts/not-a-uuid", { headers });
   expect(malformed.status()).toBe(400);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
+  const feedback = page.getByRole("region", { name: "Answer feedback" });
+  await feedback.locator("summary").filter({ hasText: "Your answer" }).click();
+  await expect(feedback.getByText(input.answer, { exact: true })).toBeVisible();
 
   const otherContext = await browser.newContext();
   try {

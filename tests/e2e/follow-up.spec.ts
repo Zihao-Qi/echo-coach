@@ -44,16 +44,19 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   const requests: Record<string, unknown>[] = [];
   page.on("request", (request) => { if (request.url().endsWith("/api/practice/evaluate") && request.method() === "POST") requests.push(request.postDataJSON()); });
   const parent = await startRoot(page);
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   const cue = page.getByRole("region", { name: "Focus for this retry" });
   await expect(cue).toContainText(parent.evaluation.nextSteps[0]);
   await page.getByLabel("Your answer", { exact: true }).fill(`${original} This is an unsent root revision.`);
   await page.getByRole("button", { name: "Answer follow-up", exact: true }).click();
   await expect(page.getByRole("region", { name: "Follow-up context" })).toBeVisible();
+  await expect(page.getByLabel("Your answer", {exact:true})).toBeFocused();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue("");
   await expect(cue).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Give me a hint", exact: true })).toHaveCount(0);
   await page.getByLabel("Your answer", { exact: true }).fill(focused);
   await page.getByRole("button", { name: "Return to original question", exact: true }).click();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(`${original} This is an unsent root revision.`);
   await page.getByRole("button", { name: "Answer follow-up", exact: true }).click();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(focused);
@@ -62,6 +65,7 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   expect(requests[1].previousAttemptId).toBeUndefined();
   expect(firstChild.questionId).toBe(`followup:${parent.id}`);
   expect(firstChild.evaluation.followUp).toBeNull();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(cue).toContainText(firstChild.evaluation.nextSteps[0]);
   await expect(page.getByRole("button", { name: "Answer follow-up", exact: true })).toHaveCount(0);
   await page.getByLabel("Your answer", { exact: true }).fill(`${focused} I would also test a failed database write.`);
@@ -69,6 +73,7 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   expect(requests[2]).toMatchObject({ questionId: root.id, followUpOfAttemptId: parent.id, previousAttemptId: firstChild.id });
   await expect(page.getByRole("region", { name: "Retry feedback" })).toBeVisible();
   await page.reload();
+  await page.getByText(/^Saved follow-ups \(/).click();
   await page.getByRole("button", { name: /^Open saved follow-up 1:/ }).click();
   await expect(page.getByRole("region", { name: "Follow-up context" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Retry feedback" })).toBeVisible();
@@ -77,6 +82,7 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   await page.screenshot({ path: testInfo.outputPath("follow-up-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   const focusedHeading = page.getByRole("heading", { name: "Which decision in this project was yours, and why did you make it?", exact: true });
   await focusedHeading.scrollIntoViewIfNeeded();
   await expect(focusedHeading).toBeInViewport();
@@ -130,6 +136,7 @@ test("pending follow-up evaluation locks navigation without extra generation", a
     await expect(page).toHaveURL(/\/practice$/);
   } finally { release(); }
   await response;
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(page.getByRole("button", { name: "Evaluate my retry", exact: true })).toBeEnabled();
 });
 
@@ -150,6 +157,7 @@ test("a failed source keeps its submission identity while another follow-up succ
   await page.getByRole("button", { name: "Get feedback", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Synthetic source A failure.");
   await page.getByRole("button", { name: "Return to original question", exact: true }).click();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await page.getByLabel("Your answer", { exact: true }).fill(`${original} A revised root answer creates another follow-up source.`);
   const parentB = await evaluate(page, "Evaluate my retry");
   expect(parentB.id).not.toBe(parentA.id);
@@ -157,7 +165,7 @@ test("a failed source keeps its submission identity while another follow-up succ
   await page.getByLabel("Your answer", { exact: true }).fill(`${focused} This answer is for source B.`);
   await evaluate(page, "Get feedback");
   await page.getByRole("button", { name: "Return to original question", exact: true }).click();
-  await page.getByRole("button", { name: "View feedback for attempt 1", exact: true }).click();
+  await page.getByRole("button", { name: "Attempt 1", exact: true }).click();
   await page.getByRole("button", { name: "Answer follow-up", exact: true }).click();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(focused);
   const recovered = await evaluate(page, "Get feedback");
@@ -168,7 +176,7 @@ test("legacy root feedback without a proposal remains readable", async ({ page }
   const { parent } = await fixtures();
   delete parent.evaluation!.followUp;
   await history(page, [parent]);
-  await expect(page.getByRole("heading", { name: "Your next step, not a final score.", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sample feedback", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Answer follow-up", exact: true })).toHaveCount(0);
 });
 
@@ -179,9 +187,11 @@ test("removed root and snapshot-less parent do not prevent reopening a saved foc
   child.evaluation!.followUp = (await demo.evaluate(root, original)).followUp; // Historical malformed nested proposal must stay hidden.
   await page.route(`**/api/practice/attempts/${parent.id}`, (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ record: parent }) }));
   await history(page, [child]);
+  await page.getByText(/^Saved follow-ups \(/).click();
   await page.getByRole("button", { name: /^Open saved follow-up 1:/ }).click();
   await expect(page.getByRole("region", { name: "Follow-up context" })).toContainText("Original question is unavailable");
   await expect(page.getByRole("button", { name: "Return to original question", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(page.getByRole("heading", { name: child.questionSnapshot!.prompt, exact: true })).toBeVisible();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(focused);
   await expect(page.getByRole("button", { name: "Answer follow-up", exact: true })).toHaveCount(0);
@@ -192,11 +202,12 @@ test("remote parent snapshot outranks changed live catalog on return", async ({ 
   const { parent, child } = await fixtures(historical);
   await page.route(`**/api/practice/attempts/${parent.id}`, (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ record: parent }) }));
   await history(page, [child]);
+  await page.getByText(/^Saved follow-ups \(/).click();
   await page.getByRole("button", { name: /^Open saved follow-up 1:/ }).click();
   await expect(page.getByRole("region", { name: "Follow-up context" })).toContainText(historical.prompt);
   await page.getByRole("button", { name: "Return to original question", exact: true }).click();
-  await expect(page.getByRole("heading", { name: historical.prompt, exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your next step, not a final score.", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: new RegExp(historical.prompt) })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sample feedback", exact: true })).toBeVisible();
 });
 
 test("failed follow-up recovery reuses its ID, root/source, and baseline", async ({ page }) => {

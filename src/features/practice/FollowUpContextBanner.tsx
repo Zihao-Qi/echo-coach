@@ -29,19 +29,19 @@ export function FollowUpContextBanner({
   return (
     <section
       aria-label="Follow-up context"
-      className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4"
+      className="mb-5 rounded-xl border border-line bg-pebble p-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">
+          <p className="text-xs font-bold uppercase tracking-wider text-body">
             Targeted follow-up · Depth 1
           </p>
           {rootQuestion ? (
-            <p className="mt-1 text-sm font-semibold text-slate-800">
+            <p className="mt-1 text-sm font-semibold text-ink">
               Original question: {rootQuestion.prompt}
             </p>
           ) : (
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted">
               Linked to earlier attempt ({followUpOfAttemptId.slice(0, 8)})
             </p>
           )}
@@ -52,29 +52,29 @@ export function FollowUpContextBanner({
             disabled={disabled || !canReturnToRoot}
             aria-describedby={!canReturnToRoot ? unavailableReasonId : undefined}
             onClick={onReturnToRoot}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="rounded-xl border border-line-strong bg-white px-3 py-1.5 text-xs font-semibold text-ink transition hover:bg-pebble disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Return to original question
           </button>
           {!canReturnToRoot && (
-            <p id={unavailableReasonId} className="text-xs text-slate-600">
+            <p id={unavailableReasonId} className="text-xs text-muted">
               Original question is unavailable in the active catalog or saved snapshot.
             </p>
           )}
         </div>
       </div>
       {parentLoading && (
-        <p role="status" className="mt-3 text-xs text-slate-600">
+        <p role="status" className="mt-3 text-xs text-muted">
           Loading parent answer context…
         </p>
       )}
       {parentError && (
-        <p role="alert" className="mt-3 text-xs text-red-800">
+        <p role="alert" className="mt-3 text-xs text-danger">
           {parentError}{" "}
           <button
             type="button"
             disabled={disabled}
-            className="font-semibold underline disabled:cursor-not-allowed disabled:opacity-50"
+            className="font-semibold underline disabled:cursor-not-allowed"
             onClick={onRetryParentLoad}
           >
             Retry loading parent answer
@@ -82,11 +82,11 @@ export function FollowUpContextBanner({
         </p>
       )}
       {parentRecord && (
-        <details className="mt-3 rounded-lg border border-indigo-100 bg-white p-3">
-          <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+        <details className="mt-3 rounded-lg border border-line bg-white p-3">
+          <summary className="cursor-pointer text-xs font-semibold text-body">
             View your parent answer that triggered this follow-up
           </summary>
-          <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-slate-700">
+          <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-body">
             {parentRecord.answer}
           </p>
         </details>

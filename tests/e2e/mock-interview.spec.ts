@@ -22,6 +22,9 @@ test("round runs three unaided turns and allows revisiting any reached turn afte
   for (const [index, question] of MOCK_PROMPTS.entries()) {
     const heading = page.getByRole("heading", { name: question.prompt, exact: true });
     await expect(heading).toBeFocused();
+    const step = page.getByRole("list", { name: "Round progress" }).getByRole("listitem").nth(index);
+    await expect(step).toHaveAttribute("aria-current", "step");
+    if (index === 0) await expect(page.getByText("Up next", { exact: true })).toHaveCount(2);
     await expect(page.getByText(`Question ${index + 1} of 3`, { exact: true })).toBeVisible();
     await expect(page.getByText(question.hints[0], { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Open debrief" })).toHaveCount(0);
@@ -39,7 +42,10 @@ test("round runs three unaided turns and allows revisiting any reached turn afte
   }
   await expect(page.getByText(first, { exact: true })).toBeVisible();
   await expect(page.getByText(third, { exact: true })).toBeVisible();
-  await expect(page.getByText("Skipped", { exact: true })).toBeVisible();
+  const progress = page.getByRole("list", { name: "Round progress" });
+  await expect(progress.getByText("Answered", { exact: true })).toHaveCount(2);
+  await expect(progress.getByText("Skipped", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name:"Round answers" }).getByText("Skipped", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Revisit question 1" })).toHaveCount(0);
   await page.getByRole("button", { name: "Open debrief", exact: true }).click();
   const debrief = page.getByRole("region", { name: "Self-review debrief" });
@@ -112,7 +118,8 @@ test("a fresh round keeps navigation in tab order and an empty exit offers resta
   await page.getByRole("button", { name: "Start mock interview", exact: true }).click();
   await page.getByRole("button", { name: "End round early", exact: true }).click();
   await expect(page.getByRole("button", { name: "Open debrief" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Start over", exact: true }).click();
+  await expect(page.getByRole("list", { name: "Round progress" }).getByText("Not included", { exact: true })).toHaveCount(3);
+  await page.getByRole("button", { name: "Start new round", exact: true }).click();
   await expect(intro).toBeFocused();
   expect(requests).toEqual([]);
 });
@@ -126,7 +133,7 @@ test("ending early keeps the current answer; declining to discard keeps the roun
   await page.getByRole("button", { name: "Save and continue", exact: true }).click();
   await answer.fill("I would compare ordering and lookup cost.");
   page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("link", { name: "Back to practice", exact: true }).click();
+  await page.getByRole("link", { name: "Practice", exact: true }).click();
   await expect(page).toHaveURL(/\/mock-interview$/);
   await expect(answer).toHaveValue("I would compare ordering and lookup cost.");
   page.once("dialog", (dialog) => dialog.dismiss());
@@ -136,7 +143,7 @@ test("ending early keeps the current answer; declining to discard keeps the roun
   await expect(page.getByText(first, { exact: true })).toBeVisible();
   await expect(page.getByText("I would compare ordering and lookup cost.", { exact: true })).toBeVisible();
   await expect(page.getByText(MOCK_PROMPTS[2].prompt, { exact: true })).toHaveCount(0);
-  const discard = page.getByRole("button", { name: "Discard round", exact: true });
+  const discard = page.getByRole("button", { name: "Start new round", exact: true });
   page.once("dialog", (dialog) => dialog.dismiss());
   await discard.click();
   await expect(page.getByText(first, { exact: true })).toBeVisible();

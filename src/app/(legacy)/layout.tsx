@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function LegacyLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <CoachProvider>{children}</CoachProvider>;
+  return <CoachProvider><div className="legacy contents">{children}</div></CoachProvider>;
 }

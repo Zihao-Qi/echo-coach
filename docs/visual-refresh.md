@@ -1,6 +1,6 @@
 # Visual refresh: ink and marigold
 
-**Status:** Spec reviewed by Gemini 4 Neon High (REVISE, then APPROVE WITH CHANGES; changes applied). Not implemented.
+**Status:** Implemented on `visual-refresh`. Gemini 4 Neon High approved the spec after revisions; the implementation diff and screenshots still need review. Not deployed.
 
 ## Goal
 
@@ -101,6 +101,12 @@ Listen to the question, recording in the public build, the sample polished answe
 4. Public-demo CI image job: the notice appears exactly once on the feedback view; the temporary-history line is visible; no mock-interview or session-recap link; no voice panel; none of the words in ground rule 3 on `/` or `/practice`; zero outbound calls (existing checks).
 5. The color search in "Visual system" returns nothing; `/legacy` screenshots match today's.
 6. Screenshots at 390 px and 1440 px: home (both builds); practice (first answer, hint open, retry with cue, disclosure open); feedback (technical first attempt, technical retry, behavioral, real-feedback fixture); mock interview (answering, round answers, debrief). Gemini 4 Neon High does a visual review against the mockups.
+
+## Local verification
+
+On Node 22, a clean `npm ci`, lint, TypeScript, both production builds, 93 unit tests, 3 integration tests, and 58 default-profile Chrome tests passed. Real feedback was exercised with routed fixtures only. All four public-demo spec cases passed over local HTTPS against the standalone build, using local Node-process restarts instead of Docker. No outbound attempts or synthetic test markers appeared in the server logs. The updated container is for CI to verify.
+
+The color search found no excluded classes. The 1440 px `/legacy` before/after PNGs were byte-identical with animations paused. The 390 px and 1440 px captures are in `/tmp/echo-lead/vr-shots/` for lead and Neon review.
 
 ## Method, review and merge
 

@@ -7,6 +7,14 @@ import { SAMPLE_FEEDBACK_NOTICE as notice } from "../../src/infrastructure/confi
 const base = "https://127.0.0.1:8443";
 const draft = "DEMO_ANSWER_MARKER: I showed a fictional student group two project sketches and chose the simpler one.";
 const url = /\/api\/practice\/evaluate$/;
+const unavailable = /out loud|listen to|record answer|\brecording\b|polished answer|\bplay\b|session recap/i;
+const temporaryHistory = "Use made-up examples. No personal details. History is temporary and may reset.";
+
+async function expectTypedOnly(page: Page) {
+  await expect(page.locator("body")).not.toContainText(unavailable);
+  await expect(page.getByRole("link", { name: /mock interview|session recap/i })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Voice answer capture" })).toHaveCount(0);
+}
 
 async function openPractice(page: Page) {
   const external: string[] = [];
@@ -16,10 +24,12 @@ async function openPractice(page: Page) {
     return route.abort();
   });
   await page.goto("/");
+  await expectTypedOnly(page);
   await expect(page.getByRole("link", { name: "Original voice demo" })).toHaveCount(0);
   await expect(page.locator('a[href="/mock-interview"]')).toHaveCount(0);
-  await page.getByRole("link", { name: /Start a focused practice round/ }).click();
-  await expect(page.getByText(notice, { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Start focused practice", exact: true }).click();
+  await expectTypedOnly(page);
+  await expect(page.getByText(temporaryHistory, { exact: false })).toBeVisible();
   await expect(page.getByLabel("Your answer", { exact: true })).toBeVisible();
   await expect(page.getByText(/microphone|record an answer|sign in with google/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Original voice demo" })).toHaveCount(0);
@@ -48,10 +58,13 @@ test("mobile demo shows sample feedback, retries and a follow-up with no externa
   await page.getByLabel("Your answer", { exact: true }).fill(draft);
   const first = await submit(page, /^Get feedback$/);
   const feedback = page.getByRole("region", { name: "Answer feedback" });
-  await expect(feedback.getByText(notice, { exact: true }).first()).toBeVisible();
-  await expect(feedback.getByText(/Illustrative demo feedback/)).toBeVisible();
+  await expect(page.getByText(notice, { exact: false })).toHaveCount(1);
+  await expect(feedback.getByText(notice, { exact: true })).toBeVisible();
+  await expect(feedback.getByRole("heading", { name: "Sample feedback" })).toBeVisible();
+  await expectTypedOnly(page);
   expect(first.attempt.provenance.mode).toBe("demo");
   expect((await context.cookies()).find((cookie) => cookie.name === "echo-practice-demo")).toMatchObject({ secure: true, httpOnly: true, sameSite: "Lax" });
+  await page.getByRole("button", { name: "Edit answer" }).click();
   await page.getByLabel("Your answer", { exact: true }).fill(draft + " I checked my choice with the group.");
   const retry = await submit(page, /^Evaluate my retry$/);
   expect(retry.attempt.previousAttemptId).toBe(first.attempt.id);
@@ -59,7 +72,11 @@ test("mobile demo shows sample feedback, retries and a follow-up with no externa
   const expectedCue = [evaluation.comparison?.nextFocus, ...evaluation.nextSteps, ...evaluation.gaps.map((gap) => gap.nextStep)]
     .map((action) => action?.trim()).find((action) => action);
   expect(expectedCue, "The sample retry must include an actionable cue").toBeTruthy();
-  await expect(page.getByRole("region", { name: "Focus for this retry" }).getByText(expectedCue!, { exact: true })).toBeVisible();
+  await expect(page.getByText(notice, { exact: false })).toHaveCount(1);
+  await page.getByRole("button", { name: "Edit answer" }).click();
+  const cue = page.getByRole("region", { name: "Focus for this retry" });
+  await expect(cue.getByText(expectedCue!, { exact: true })).toBeVisible();
+  await expect(cue.getByText("Sample focus for this retry", { exact: true })).toBeVisible();
   await expect(feedback.getByRole("button", { name: "Try another question in Behavioral: Learning and accountability", exact: true })).toHaveCount(1);
   await expect(feedback.getByText(notice, { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Answer follow-up$/i }).click();
@@ -97,6 +114,7 @@ test("two HTTPS sessions stay isolated, disabled routes and cross-origin writes 
   expect((await page.request.post("/api/practice/evaluate", {
     headers: { Origin: "https://not-the-demo.example" }, data: { answer: "DEMO_REQUEST_BODY_MARKER" },
   })).status()).toBe(403);
+  await page.getByRole("button", { name: "Edit answer" }).click();
   await answer.fill(draft + " This is my unsent follow-on draft.");
   await restart(page);
   const posts: string[] = [];
@@ -121,6 +139,7 @@ test("a retained cookie sees empty history after a restart and does not replay o
   const first = await submit(page, /^Get feedback$/);
   const cookie = (await context.cookies()).find((item) => item.name === "echo-practice-demo")!.value;
   appendFileSync(process.env.PUBLIC_DEMO_LOG_MARKERS!, cookie + "\n");
+  await page.getByRole("button", { name: "Edit answer" }).click();
   await answer.fill(draft + " I revised it, but haven’t sent it yet.");
   await restart(page);
   expect((await page.request.get(`/api/practice/attempts/${first.attempt.id}`)).status()).toBe(404);

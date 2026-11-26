@@ -142,7 +142,8 @@ export function usePracticeSession({
   const retryBaselineId = resumableSubmission ? resumableSubmission.previousAttemptId : latest?.id;
   const baseline = useAttemptBaseline(latest?.previousAttemptId, history.records, access.headers);
   const previous = baseline.record;
-  const localRetryEvaluation = questionAttempts.find((attempt) => attempt.id === retryBaselineId)?.evaluation;
+  const localRetry = questionAttempts.find((attempt) => attempt.id === retryBaselineId);
+  const localRetryEvaluation = localRetry?.evaluation;
   const recoveryBaseline = useAttemptBaseline(
     !localRetryEvaluation && retryBaselineId !== latest?.previousAttemptId ? retryBaselineId : undefined,
     history.records,
@@ -235,7 +236,8 @@ export function usePracticeSession({
     setHintCount(0);
     setError(null);
     setSelectedAttempt(null);
-    focusQuestionHeading(`Opened follow-up question: ${followUpQuestion.prompt}`);
+    setStatusAnnouncement(`Opened follow-up question: ${followUpQuestion.prompt}`);
+    requestAnimationFrame(() => answerTextareaRef.current?.focus());
   }
 
   function openSavedFollowUpGroup(group: SavedFollowUpGroup) {
@@ -423,6 +425,7 @@ export function usePracticeSession({
         delete next[activeQuestionId];
         return next;
       });
+      return true;
     } catch (cause) {
       if (!controller.signal.aborted) {
         setError(cause instanceof Error ? cause.message : "Please try again.");
@@ -455,6 +458,7 @@ export function usePracticeSession({
     displayedQuestion,
     answer,
     retryCue,
+    retryCueMode: localRetry?.provenance.mode ?? linkedRetry?.provenance?.mode,
     isRetry: !!retryBaselineId,
     hintCount,
     pending,

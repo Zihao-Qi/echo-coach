@@ -36,6 +36,7 @@ test("branch retry shows its linked baseline, evidence changes, and other attemp
   });
   await history(page, [third, second, first]);
   const cue = page.getByRole("region", { name: "Focus for this retry" });
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(cue).toContainText("Explain the sorted-array alternative.");
   const feedback = page.getByRole("region", { name: "Retry feedback" });
   await expect(feedback).toContainText("What changed since Attempt 1?");
@@ -44,10 +45,13 @@ test("branch retry shows its linked baseline, evidence changes, and other attemp
   const attempts = page.getByRole("region", { name: "Attempt comparison" });
   await expect(attempts.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
   await expect(attempts.getByRole("heading", { name: "Attempt 3", exact: true })).toBeVisible();
-  await attempts.getByText("Earlier attempts (1)", { exact: true }).click();
-  await expect(attempts).toContainText(`Attempt 2: ${second.answer}`);
-  await attempts.getByRole("button", { name: "View feedback for attempt 2", exact: true }).click();
+  const selector = page.getByRole("group", {name:"Attempts"});
+  await expect(selector.getByRole("button", {name:"Attempt 3"})).toHaveAttribute("aria-pressed","true");
+  await selector.getByRole("button", {name:"Attempt 2"}).click();
+  await expect(selector.getByRole("button", {name:"Attempt 2"})).toHaveAttribute("aria-pressed","true");
+  await expect(attempts).toContainText(second.answer);
   await expect(page.getByRole("button", { name: /^Try another question in Software engineering: Debugging and testing$/ })).toBeVisible();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(cue).toContainText("Name one workload that benefits from ordering.");
   await expect(cue).not.toContainText("A second action");
   const draft = page.getByLabel("Your answer", { exact: true });
@@ -82,7 +86,8 @@ test("historical retries without comparison remain readable", async ({ page }) =
   const shortcut = page.getByRole("button", { name: /^Try another question in / });
   await expect(shortcut).toBeVisible();
   await expect(page.getByRole("heading", { name: "Attempt 2", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "View feedback for attempt 1", exact: true }).click();
+  await page.getByRole("button", { name: "Attempt 1", exact: true }).click();
+  await expect(page.getByRole("button", {name:"Attempt 1",exact:true})).toHaveAttribute("aria-pressed","true");
   await expect(shortcut).toHaveCount(0);
 });
 
@@ -111,9 +116,11 @@ test("failed retries and archived root retries do not offer another catalog ques
   const archivedRetry = { ...archivedFirst, id: "00000000-0000-4000-8000-000000000074", previousAttemptId: archivedFirst.id, answer: after };
   await history(page, [archivedRetry, archivedFirst, first, { ...failed, status: "failed", evaluation: undefined, provenance: undefined }]);
   await expect(page.getByRole("region", { name: "Saved answers awaiting feedback" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Attempt comparison" })).toContainText(first.answer);
+  await page.locator("summary").filter({ hasText: "Your answer" }).click();
+  await expect(page.getByText(first.answer, { exact: true })).toBeVisible();
   const shortcut = page.getByRole("button", { name: /^Try another question in / });
   await expect(shortcut).toHaveCount(0);
+  await page.getByText(/^Earlier questions \(/).click();
   await page.getByRole("button", { name: "Retired example 2 saved attempts" }).click();
   await expect(page.getByRole("region", { name: "Attempt comparison" })).toContainText(archivedRetry.answer);
   await expect(shortcut).toHaveCount(0);
@@ -167,6 +174,7 @@ for (const hasAction of [true, false]) {
     await history(page, [retry, first]);
     await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Fixture retry.");
     const cue = page.getByRole("region", { name: "Focus for this retry" });
+    await page.getByRole("button", { name: "Edit answer", exact: true }).click();
     if (hasAction) await expect(cue.getByText(action, { exact: true })).toBeVisible();
     else await expect(cue).toHaveCount(0);
   });
@@ -191,6 +199,7 @@ test("recovering an older failed attempt selects its returned feedback", async (
     await route.fulfill({ contentType: "application/json", body: JSON.stringify({ attempt }) });
   });
   await history(page, records);
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   const cue = page.getByRole("region", { name: "Focus for this retry" });
   await expect(cue).toContainText("This cue belongs to the newest attempt only.");
   await expect(page.getByRole("heading", { name: "Linked earlier answer", exact: true })).toBeVisible();
@@ -206,9 +215,10 @@ test("recovering an older failed attempt selects its returned feedback", async (
   await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Feedback for the recovered earlier attempt.");
   const attempts = page.getByRole("region", { name: "Attempt comparison" });
   await expect(attempts).toContainText(failed.answer);
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(cue).toContainText("Add a workload example.");
-  await attempts.getByText("Earlier attempts (1)", { exact: true }).click();
-  await attempts.getByRole("button", { name: /View feedback for attempt / }).click();
+  await page.getByRole("group", { name: "Attempts" }).getByRole("button", { name: "Attempt 2", exact: true }).click();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await expect(cue).toContainText("This cue belongs to the newest attempt only.");
   expect(baselineReads).toBe(1);
 });
@@ -237,6 +247,7 @@ for (const hasOriginalBaseline of [true, false]) {
     });
     await history(page, [latest, { ...failed, status: "failed", evaluation: undefined, provenance: undefined }]);
     const cue = page.getByRole("region", { name: "Focus for this retry" });
+    await page.getByRole("button", { name: "Edit answer", exact: true }).click();
     await expect(cue).toContainText("This cue only applies to a new submission.");
     await page.getByRole("button", { name: "Reopen saved answer" }).click();
     // Displayed feedback is still the completed retry, even when the recovered composer is not a retry.

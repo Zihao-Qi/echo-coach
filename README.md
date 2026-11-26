@@ -2,15 +2,17 @@
 
 ## Public demo (not launched)
 
-The [public demo profile](docs/public-demo-readiness.md) offers typed practice with sample feedback, not a personal assessment. It has no account, voice recording, legacy interview, or live model calls. History is temporary and can reset. The features below describe the repository’s other local or private profiles, not the public demo.
+The [public demo profile](docs/public-demo-readiness.md) offers typed practice with sample feedback, not a personal assessment. It has no account, voice recording, legacy interview, or live model calls. History is temporary and can reset. The next public release adds three new practice questions, the retry focus cue, and the next-question shortcut to `/practice`. The public demo does not link to or serve `/mock-interview`. The features below describe the repository’s other local or private profiles unless noted.
 
 ## Reconstruction preview
 
 The redesigned home is at `/`, the new-graduate practice workspace is at `/practice`, and the original voice demo remains at `/legacy`.
 
-- Six curated starter questions across behavioral, software engineering, and AI/ML.
+- Nine curated starter questions across behavioral, software engineering, and AI/ML, including clarifying requirements, stable pagination, and investigating label quality.
 - Progressive hints, question-aware structured feedback, and separate retry attempts.
-- [Retry comparison](docs/retry-comparison.md) shows before/after evidence, regressions, and a next focus using the same evaluation request; historical feedback and linked baselines remain accessible.
+- [Retry comparison](docs/retry-comparison.md) shows before/after evidence, regressions, and a next focus using the same evaluation request; historical feedback and linked baselines remain accessible. The retry composer shows one saved action to focus on.
+- [Try another question](docs/post-retry-next-question.md) opens the next question in the same track after a completed retry, without losing drafts.
+- [Typed mock interview](docs/mock-interview.md) at `/mock-interview` offers a three-question round and optional self-review, without coaching during the round or any API calls.
 - [Targeted follow-ups](docs/follow-up-design.md) offer one optional focused question within that same evaluation. Original/follow-up drafts and retry histories stay separate; saved questions reopen with their historical snapshots. Gemini 4 designed and implemented the UI, followed by lead critique and independent GPT-6.1-Sol/high review.
 - Default demo feedback is illustrative, **not an assessment of correctness**.
 - Coaching now includes separate accuracy, reasoning, structure, and evidence findings. [Gemini evaluation setup](docs/gemini-evaluation.md) covers bounded local testing and the benchmark. The user's local configuration now uses Gemini 3.8 Flash / low thinking; the shared `.env.example` still defaults to mock feedback.

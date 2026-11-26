@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PUBLIC_DEMO_BUILD, SAMPLE_FEEDBACK_NOTICE } from "../../infrastructure/config/public-demo";
-import { starterQuestions } from "../../content/questions/starter-bank";
+import { nextStarterQuestion, starterQuestions } from "../../content/questions/starter-bank";
 import type { AttemptRecord } from "../../domain/interview/attempt-record";
 import type { AnswerAttempt, InterviewQuestion, InterviewTrack } from "../../domain/interview/practice";
 import { VoiceAnswerPanel } from "./audio/VoiceAnswerPanel";
@@ -82,6 +82,8 @@ function PracticeSessionView({
     latest,
     baseline,
     previous,
+    retryCue,
+    isRetry,
     parentSourceBaseline,
     parentRecord,
     rootQuestionForReturn,
@@ -166,6 +168,22 @@ function PracticeSessionView({
     session.recover(record);
   }
 
+  const nextQuestion =
+    target.kind === "root" &&
+    latest &&
+    !latest.followUpOfAttemptId &&
+    !!latest.previousAttemptId &&
+    (latest.rootQuestionId ?? latest.questionId) === target.questionId
+      ? nextStarterQuestion(target.questionId)
+      : undefined;
+  const nextQuestionTrackLabel = nextQuestion
+    ? tracks.find((item) => item.id === nextQuestion.track)?.label
+    : undefined;
+  const nextQuestionLabel =
+    nextQuestion && nextQuestionTrackLabel
+      ? `Try another question in ${nextQuestionTrackLabel}: ${nextQuestion.competency}`
+      : undefined;
+
   return (
     <div className="min-h-screen bg-[#f6f7fb] px-4 py-6 text-slate-900 sm:px-8">
       <div className="mx-auto max-w-6xl">
@@ -236,7 +254,7 @@ function PracticeSessionView({
           {PUBLIC_DEMO_BUILD ? "Public demo · History is temporary and may disappear after inactivity or a restart. Use made-up examples and don’t include personal or confidential details." : access.storage === "memory"
             ? `${access.mode === "demo" ? "Demo" : "Google sign-in preview"} · Submitted history lives in this server process only and is lost on restart; cross-device durability is not enabled.`
             : "Private practice · Submitted answers are saved to your account before evaluation. Drafts are not saved until submitted."}{" "}
-          {PUBLIC_DEMO_BUILD ? SAMPLE_FEEDBACK_NOTICE : access.mockEvaluation &&
+          {PUBLIC_DEMO_BUILD ? <span>{SAMPLE_FEEDBACK_NOTICE}</span> : access.mockEvaluation &&
             "Feedback is illustrative, not a correctness assessment. No Gemini requests are made."}
         </p>
         {access.localGemini && (
@@ -425,6 +443,15 @@ function PracticeSessionView({
                 <label htmlFor="practice-answer" className="text-sm font-bold">
                   Your answer
                 </label>
+                {retryCue && (
+                  <section
+                    aria-label="Focus for this retry"
+                    className="mt-2 min-w-0 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs leading-5 text-slate-700"
+                  >
+                    <p className="font-semibold text-indigo-900">Focus for this retry</p>
+                    <p id="retry-focus-cue" className="mt-0.5 break-words">{retryCue}</p>
+                  </section>
+                )}
                 <textarea
                   ref={answerTextareaRef}
                   id="practice-answer"
@@ -435,9 +462,13 @@ function PracticeSessionView({
                   placeholder="Explain your reasoning in your own words. You do not need a perfect first attempt."
                   className="mt-2 min-h-48 w-full resize-y rounded-xl border border-slate-300 p-4 text-base leading-7 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                   aria-describedby={
-                    voice.hasUnappliedVoiceState
-                      ? "answer-guidance voice-submit-guard"
-                      : "answer-guidance"
+                    [
+                      "answer-guidance",
+                      retryCue ? "retry-focus-cue" : null,
+                      voice.hasUnappliedVoiceState ? "voice-submit-guard" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
                   }
                 />
                 {voice.hasUnappliedVoiceState && (
@@ -467,7 +498,7 @@ function PracticeSessionView({
                       ? "Reviewing your answer…"
                       : history.loading
                         ? "Loading history…"
-                        : latest
+                        : isRetry
                           ? "Evaluate my retry"
                           : "Get feedback"}
                   </button>
@@ -549,6 +580,10 @@ function PracticeSessionView({
                 onSelectAttempt={(attempt) => {
                   runGuardedNavigation(() => session.setSelectedAttempt(attempt));
                 }}
+                nextQuestionLabel={nextQuestionLabel}
+                onChooseNextQuestion={
+                  nextQuestion ? () => handleChooseQuestion(nextQuestion.id) : undefined
+                }
               />
             )}
           </div>

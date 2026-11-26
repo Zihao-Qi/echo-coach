@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { starterQuestions } from "../../src/content/questions/starter-bank";
+import { nextStarterQuestion, starterQuestions } from "../../src/content/questions/starter-bank";
 import { evaluateAttempt, submissionSchema, evaluationSchema } from "../../src/application/workflows/evaluate-attempt";
 import { DemoPracticeEvaluator } from "../../src/infrastructure/ai/demo/practice-evaluator";
 import { POST } from "../../src/app/api/practice/evaluate/route";
@@ -12,7 +12,24 @@ const answer = "I built a course project and implemented its API, then tested er
 
 test("starter bank has unique IDs and coverage for all three tracks", () => {
   assert.equal(new Set(starterQuestions.map((q) => q.id)).size, starterQuestions.length);
-  for (const track of ["behavioral", "swe", "ai-ml"]) assert.ok(starterQuestions.some((q) => q.track === track));
+  for (const [track, firstThree] of Object.entries({
+    behavioral: ["behavioral-project", "behavioral-setback", "behavioral-clarify"],
+    swe: ["swe-hash-map", "swe-debugging", "swe-pagination"],
+    "ai-ml": ["ml-data-leakage", "ml-imbalanced-metrics", "ml-label-audit"],
+  })) {
+    assert.deepEqual(starterQuestions.filter((q) => q.track === track).slice(0, 3).map((q) => q.id), firstThree);
+  }
+  for (const q of starterQuestions) {
+    assert.ok(q.hints.length >= 2 && q.hints.every((hint) => hint.trim()), q.id);
+    assert.ok(q.rubric.expectedConcepts.length && q.rubric.commonPitfalls.length, q.id);
+  }
+});
+
+test("next starter follows catalog order within a track and never suggests itself", () => {
+  assert.equal(nextStarterQuestion("swe-debugging")?.id, "swe-pagination");
+  assert.equal(nextStarterQuestion("swe-pagination")?.id, "swe-hash-map");
+  assert.equal(nextStarterQuestion("archived-root"), undefined);
+  assert.equal(nextStarterQuestion(question.id, [question, starterQuestions[2]]), undefined);
 });
 
 test("submissions reject short answers, extra fields, and invalid retry IDs", () => {

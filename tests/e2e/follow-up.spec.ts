@@ -44,10 +44,13 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   const requests: Record<string, unknown>[] = [];
   page.on("request", (request) => { if (request.url().endsWith("/api/practice/evaluate") && request.method() === "POST") requests.push(request.postDataJSON()); });
   const parent = await startRoot(page);
+  const cue = page.getByRole("region", { name: "Focus for this retry" });
+  await expect(cue).toContainText(parent.evaluation.nextSteps[0]);
   await page.getByLabel("Your answer", { exact: true }).fill(`${original} This is an unsent root revision.`);
   await page.getByRole("button", { name: "Answer follow-up", exact: true }).click();
   await expect(page.getByRole("region", { name: "Follow-up context" })).toBeVisible();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue("");
+  await expect(cue).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Give me a hint", exact: true })).toHaveCount(0);
   await page.getByLabel("Your answer", { exact: true }).fill(focused);
   await page.getByRole("button", { name: "Return to original question", exact: true }).click();
@@ -59,6 +62,7 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   expect(requests[1].previousAttemptId).toBeUndefined();
   expect(firstChild.questionId).toBe(`followup:${parent.id}`);
   expect(firstChild.evaluation.followUp).toBeNull();
+  await expect(cue).toContainText(firstChild.evaluation.nextSteps[0]);
   await expect(page.getByRole("button", { name: "Answer follow-up", exact: true })).toHaveCount(0);
   await page.getByLabel("Your answer", { exact: true }).fill(`${focused} I would also test a failed database write.`);
   await evaluate(page, "Evaluate my retry");
@@ -68,6 +72,7 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   await page.getByRole("button", { name: /^Open saved follow-up 1:/ }).click();
   await expect(page.getByRole("region", { name: "Follow-up context" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Retry feedback" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Try another question in / })).toHaveCount(0);
   expect(requests).toHaveLength(3); // Navigation/reload did not generate.
   await page.screenshot({ path: testInfo.outputPath("follow-up-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -77,6 +82,31 @@ test("root and follow-up drafts are isolated; first child and retry keep distinc
   await expect(focusedHeading).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath("follow-up-mobile.png") });
   expect(requests).toHaveLength(3);
+});
+
+test("recovering a follow-up uses its off-page same-thread coaching cue", async ({ page }) => {
+  const { parent, child } = await fixtures();
+  child.evaluation!.nextSteps = ["Defend the test boundary with one concrete example."];
+  const failed: AttemptRecord = {
+    ...child, id: "00000000-0000-4000-8000-000000000104", submittedAt: "2026-01-01T00:00:02.000Z",
+    previousAttemptId: child.id, status: "failed", evaluation: undefined, provenance: undefined,
+  };
+  let reads = 0;
+  let submissions = 0;
+  await page.route(`**/api/practice/attempts/${child.id}`, (route) => { reads++; return route.fulfill({ json: { record: child } }); });
+  await page.route("**/api/practice/evaluate", (route) => {
+    submissions++;
+    expect(route.request().postDataJSON()).toMatchObject({ submissionId: failed.id, questionId: root.id, followUpOfAttemptId: parent.id, previousAttemptId: child.id });
+    return route.fulfill({ json: { attempt: { ...failed, status: "completed", evaluation: child.evaluation, provenance: child.provenance } } });
+  });
+  await history(page, [parent, failed]);
+  await page.getByRole("button", { name: "Reopen saved answer" }).click();
+  const cue = page.getByRole("region", { name: "Focus for this retry" });
+  await expect(cue).toContainText(child.evaluation!.nextSteps[0]);
+  expect(reads).toBe(1);
+  expect(submissions).toBe(0);
+  await evaluate(page, "Evaluate my retry");
+  expect(submissions).toBe(1);
 });
 
 test("pending follow-up evaluation locks navigation without extra generation", async ({ page }) => {

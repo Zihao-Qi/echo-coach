@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import type { AnswerEvaluation } from "../../src/domain/interview/practice";
+import { SAMPLE_FEEDBACK_NOTICE as notice } from "../../src/infrastructure/config/public-demo";
 
 const base = "https://127.0.0.1:8443";
-const notice = "This demo shows sample feedback. It does not assess whether your answer is correct.";
 const draft = "DEMO_ANSWER_MARKER: I showed a fictional student group two project sketches and chose the simpler one.";
 const url = /\/api\/practice\/evaluate$/;
 
@@ -16,8 +17,9 @@ async function openPractice(page: Page) {
   });
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Original voice demo" })).toHaveCount(0);
+  await expect(page.locator('a[href="/mock-interview"]')).toHaveCount(0);
   await page.getByRole("link", { name: /Start a focused practice round/ }).click();
-  await expect(page.getByText(notice, { exact: false }).first()).toBeVisible();
+  await expect(page.getByText(notice, { exact: true })).toBeVisible();
   await expect(page.getByLabel("Your answer", { exact: true })).toBeVisible();
   await expect(page.getByText(/microphone|record an answer|sign in with google/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Original voice demo" })).toHaveCount(0);
@@ -53,6 +55,13 @@ test("mobile demo shows sample feedback, retries and a follow-up with no externa
   await page.getByLabel("Your answer", { exact: true }).fill(draft + " I checked my choice with the group.");
   const retry = await submit(page, /^Evaluate my retry$/);
   expect(retry.attempt.previousAttemptId).toBe(first.attempt.id);
+  const evaluation: AnswerEvaluation = retry.attempt.evaluation;
+  const expectedCue = [evaluation.comparison?.nextFocus, ...evaluation.nextSteps, ...evaluation.gaps.map((gap) => gap.nextStep)]
+    .map((action) => action?.trim()).find((action) => action);
+  expect(expectedCue, "The sample retry must include an actionable cue").toBeTruthy();
+  await expect(page.getByRole("region", { name: "Focus for this retry" }).getByText(expectedCue!, { exact: true })).toBeVisible();
+  await expect(feedback.getByRole("button", { name: "Try another question in Behavioral: Learning and accountability", exact: true })).toHaveCount(1);
+  await expect(feedback.getByText(notice, { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Answer follow-up$/i }).click();
   await page.getByLabel("Your answer", { exact: true }).fill("I chose the shorter fictional plan because the deadline was one day away.");
   const followUp = await submit(page, /^Get feedback$/);
@@ -81,7 +90,7 @@ test("two HTTPS sessions stay isolated, disabled routes and cross-origin writes 
     expect((await history.json()).records).toEqual([]);
     expect((await other.request.get(`/api/practice/attempts/${first.attempt.id}`)).status()).toBe(404);
   } finally { await other.close(); }
-  for (const path of ["/api/practice/Access", "/legacy", "/session/fictional", "/session/fictional/recap", "/api/history", "/api/auth/session", "/api/session", "/api/session/speak", "/api/practice/transcriptions"]) {
+  for (const path of ["/api/practice/Access", "/legacy", "/mock-interview", "/session/fictional", "/session/fictional/recap", "/api/history", "/api/auth/session", "/api/session", "/api/session/speak", "/api/practice/transcriptions"]) {
     expect((await page.request.get(path)).status(), path).toBe(404);
   }
   expect((await page.request.post("/api/practice/transcriptions", { data: "not audio" })).status()).toBe(404);

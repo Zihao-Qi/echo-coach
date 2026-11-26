@@ -22,7 +22,8 @@ export default function HomePage() {
               <h1 className="mt-5 max-w-xl text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">Good answers are built.<br /><span className="text-indigo-600">Not memorized.</span></h1>
               <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">{PUBLIC_DEMO_BUILD ? "Try a typed interview question, see sample feedback, and revise your answer." : "Practice explaining what you know, get specific feedback, and try again. Build the reasoning and stories behind a stronger interview."}</p>
               <Link href="/practice" className="mt-8 inline-flex rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-600">Start a focused practice round →</Link>
-              <p className="mt-4 text-xs text-slate-500">{PUBLIC_DEMO_BUILD ? "Public demo · No account required" : "New-graduate SWE + AI/ML · Text practice now · Live interviews coming next"}</p>
+              {!PUBLIC_DEMO_BUILD && <Link href="/mock-interview" className="ml-0 mt-4 block text-sm font-semibold text-indigo-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:ml-4 sm:inline-block">Try a three-question mock interview →</Link>}
+              <p className="mt-4 text-xs text-slate-500">{PUBLIC_DEMO_BUILD ? "Public demo · No account required" : "New-graduate SWE + AI/ML · Focused drills and typed mock rounds"}</p>
             </div>
             <aside aria-label="Practice approach preview" className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl sm:p-9">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-300">The learning loop</p>

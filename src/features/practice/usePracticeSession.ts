@@ -61,9 +61,9 @@ export function usePracticeSession({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusAnnouncement, setStatusAnnouncement] = useState<string>("");
+  const [submissionCache, setSubmissionCache] = useState<Partial<Record<string, SubmissionCache>>>({});
 
   const requestRef = useRef<AbortController | null>(null);
-  const submissionCacheRef = useRef<Record<string, SubmissionCache>>({});
   const questionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const answerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -130,8 +130,32 @@ export function usePracticeSession({
         initialStarter);
 
   const answer = drafts[activeQuestionId] ?? "";
+  const rootQuestionIdForSubmit = target.kind === "followup" ? effectiveRootQuestionId : target.rootQuestionId;
+  const followUpOfAttemptId = target.kind === "followup" ? target.followUpOfAttemptId : undefined;
+  const cached = submissionCache[activeQuestionId];
+  // History can confirm completion even if the submit response never reached the client.
+  const resumableSubmission = cached &&
+    cached.questionId === rootQuestionIdForSubmit && cached.followUpOfAttemptId === followUpOfAttemptId &&
+    cached.answer === answer && !questionAttempts.some((attempt) => attempt.id === cached.submissionId)
+    ? cached : undefined;
+  // An unchanged recovered submission keeps its original lineage (including no baseline).
+  const retryBaselineId = resumableSubmission ? resumableSubmission.previousAttemptId : latest?.id;
   const baseline = useAttemptBaseline(latest?.previousAttemptId, history.records, access.headers);
   const previous = baseline.record;
+  const localRetryEvaluation = questionAttempts.find((attempt) => attempt.id === retryBaselineId)?.evaluation;
+  const recoveryBaseline = useAttemptBaseline(
+    !localRetryEvaluation && retryBaselineId !== latest?.previousAttemptId ? retryBaselineId : undefined,
+    history.records,
+    access.headers,
+  );
+  const linkedRetry = retryBaselineId === latest?.previousAttemptId ? previous : recoveryBaseline.record;
+  const linkedEvaluation = linkedRetry?.id === retryBaselineId && linkedRetry?.questionId === activeQuestionId
+    ? completedAttempt(linkedRetry)?.evaluation
+    : undefined;
+  const retryEvaluation = localRetryEvaluation ?? linkedEvaluation;
+  const retryCue = retryEvaluation?.comparison?.nextFocus.trim() ||
+    retryEvaluation?.nextSteps.find((step) => step.trim())?.trim() ||
+    retryEvaluation?.gaps.find((gap) => gap.nextStep.trim())?.nextStep.trim();
 
   const savedFollowUpGroups = buildSavedFollowUpGroups(attempts, history.records);
   const archivedRootGroups = buildArchivedRootGroups(attempts);
@@ -283,13 +307,14 @@ export function usePracticeSession({
       setError(null);
       setSelectedAttempt(null);
       setDrafts((items) => ({ ...items, [record.questionId]: record.answer }));
-      submissionCacheRef.current[record.questionId] = {
+      const cachedSubmission = {
         submissionId: record.id,
         questionId: derived.rootQuestionId,
         followUpOfAttemptId: record.followUpOfAttemptId,
         previousAttemptId: record.previousAttemptId,
         answer: record.answer,
       };
+      setSubmissionCache((current) => ({ ...current, [record.questionId]: cachedSubmission }));
       focusQuestionHeading(`Reopened saved follow-up answer for ${derived.question.competency}`);
       return;
     }
@@ -317,19 +342,17 @@ export function usePracticeSession({
     setError(null);
     setSelectedAttempt(null);
     setDrafts((items) => ({ ...items, [rootId]: record.answer }));
-    submissionCacheRef.current[rootId] = {
+    setSubmissionCache((current) => ({ ...current, [rootId]: {
       submissionId: record.id,
       questionId: rootId,
       previousAttemptId: record.previousAttemptId,
       answer: record.answer,
-    };
+    } }));
     focusQuestionHeading(`Reopened saved answer for ${savedQuestion.competency}`);
   }
 
   async function submit() {
-    if (pending || history.loading || answer.trim().length < 20) return;
-    const rootQuestionIdForSubmit =
-      target.kind === "followup" ? effectiveRootQuestionId : target.rootQuestionId;
+    if (requestRef.current || pending || history.loading || answer.trim().length < 20) return;
     if (!rootQuestionIdForSubmit) {
       setError("Cannot submit follow-up because the original root question ID is unavailable.");
       return;
@@ -339,24 +362,14 @@ export function usePracticeSession({
     setPending(true);
     setError(null);
     try {
-      const followUpOfAttemptId =
-        target.kind === "followup" ? target.followUpOfAttemptId : undefined;
-      let cached = submissionCacheRef.current[activeQuestionId];
-      if (
-        !cached ||
-        cached.questionId !== rootQuestionIdForSubmit ||
-        cached.followUpOfAttemptId !== followUpOfAttemptId ||
-        cached.answer !== answer
-      ) {
-        cached = {
-          submissionId: crypto.randomUUID(),
-          questionId: rootQuestionIdForSubmit,
-          followUpOfAttemptId,
-          previousAttemptId: latest?.id,
-          answer,
-        };
-        submissionCacheRef.current[activeQuestionId] = cached;
-      }
+      const cached = resumableSubmission ?? {
+        submissionId: crypto.randomUUID(),
+        questionId: rootQuestionIdForSubmit,
+        followUpOfAttemptId,
+        previousAttemptId: retryBaselineId,
+        answer,
+      };
+      setSubmissionCache((current) => ({ ...current, [activeQuestionId]: cached }));
       const payloadBody: {
         submissionId: string;
         questionId: string;
@@ -394,7 +407,7 @@ export function usePracticeSession({
           if (!fresh.ok) throw new Error("The demo session expired and could not be restarted yet. Your draft is still here.");
         }
         setSelectedAttempt(null);
-        submissionCacheRef.current = {};
+        setSubmissionCache({});
         const message = target.kind === "followup"
           ? "The original answer for this follow-up is no longer available. Your draft is still here; return to the original question to start again."
           : "The demo session reset. Your draft is still here. Submit again when you’re ready.";
@@ -405,13 +418,18 @@ export function usePracticeSession({
       if (!response.ok || !payload.attempt) throw new Error(failureMessage);
       history.upsert({ ...payload.attempt, status: "completed" });
       setSelectedAttempt(payload.attempt);
-      delete submissionCacheRef.current[activeQuestionId];
+      setSubmissionCache((current) => {
+        const next = { ...current };
+        delete next[activeQuestionId];
+        return next;
+      });
     } catch (cause) {
       if (!controller.signal.aborted) {
         setError(cause instanceof Error ? cause.message : "Please try again.");
         await history.load(controller.signal);
       }
     } finally {
+      requestRef.current = null;
       if (!controller.signal.aborted) setPending(false);
     }
   }
@@ -436,6 +454,8 @@ export function usePracticeSession({
     target,
     displayedQuestion,
     answer,
+    retryCue,
+    isRetry: !!retryBaselineId,
     hintCount,
     pending,
     error,

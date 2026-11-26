@@ -20,10 +20,10 @@
 
 - The owner approved the launch, accepting the rebuilt image as tested by the preview checks rather than by promoting a CI-tested image.
 - Ran `gcloud run services update --no-iap` and granted `allUsers` `roles/run.invoker`. Public checks: `/` 200 with the home content, `/practice` 200, `/legacy` and `/api/session` 404, and a cross-site POST to `/api/practice/evaluate` 403.
-- Original `echo-coach` service: the owner asked for a low budget. The `$5` project budget already covers it (budgets apply per project). It was also capped at one instance (`--max 1`) and still serves. It remains public and in real mode (`USE_MOCK=false`, with a Gemini key); it had no requests in the last 30 days.
+- Original `echo-coach` service: the owner asked for a low budget. The `$5` project budget already covers it (budgets apply per project). It was also capped at one instance (`--max 1`) and still serves. At launch it was still public and in real mode (`USE_MOCK=false`, with a Gemini key); it had no requests in the last 30 days. **Made private on 2026-11-26** at the owner's request: the `allUsers` invoker binding was removed (the service now has no invoker bindings) and its URL returns 403. The service, revision and key were kept, so this is reversible.
 - To withdraw: `--ingress internal`, or remove the `allUsers` binding.
 
-**Still open after launch:** promote a CI-tested image (Workload Identity Federation) or run the CI image suite against this digest; and decide whether to restrict, quota-limit or delete the original `echo-coach` service.
+**Still open after launch:** promote a CI-tested image (Workload Identity Federation) or run the CI image suite against this digest; and delete the original `echo-coach` service once the demo covers its features (owner's plan; it stays private until then).
 
 ## Facts checked (read-only, 2026-11-25)
 
@@ -82,7 +82,7 @@ Within free tiers at preview traffic: Cloud Run (request-based, scales to zero),
 
 ## Separate risk, not changed here
 
-The original `echo-coach` service is open to anyone and holds a Gemini API key. If its code still makes real Gemini, speech or image calls, anyone with the URL can run up charges, and it has no instance cap. Recommend deciding, separately, whether to restrict or delete it.
+The original `echo-coach` service is open to anyone and holds a Gemini API key. If its code still makes real Gemini, speech or image calls, anyone with the URL can run up charges, and it has no instance cap. Recommend deciding, separately, whether to restrict or delete it. *Resolved 2026-11-26: capped at one instance at launch and made private the next day (see Launch).*
 
 ## Rollback
 

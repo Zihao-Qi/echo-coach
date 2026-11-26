@@ -72,7 +72,7 @@ export class MemoryAttemptRepository implements AttemptRepository {
   }
   async initializeSnapshot(ownerId: string, id: string, question: InterviewQuestion, root: string) {
     const record = this.existing(ownerId)?.records.get(id);
-    if (!record || (record.rootQuestionId || record.questionId) !== root) throw new Error("Snapshot target mismatch.");
+    if (!record || record.questionId !== question.id || (record.rootQuestionId && record.rootQuestionId !== root)) throw new Error("Snapshot target mismatch.");
     if (!record.questionSnapshot && record.status !== "completed") {
       record.questionSnapshot = structuredClone(question);
       record.rootQuestionId = root;

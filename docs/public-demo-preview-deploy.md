@@ -1,4 +1,4 @@
-**Status:** Deployed and verified as a private preview on 2026-11-25. Reviewed by Gemini 4 Neon High (REVISE, then APPROVE WITH CHANGES; all findings applied). The owner authorized the preview and accepted the rebuild deviation for the preview only. Public exposure is **not** authorized.
+**Status:** Deployed and verified as a private preview on 2026-11-25. Reviewed by Gemini 4 Neon High (REVISE, then APPROVE WITH CHANGES; all findings applied). The owner authorized the preview and accepted the rebuild deviation for the preview only. **Launched publicly on 2026-11-25** with the owner's explicit approval (see Launch).
 
 ## Results (2026-11-25)
 
@@ -16,7 +16,14 @@
 - **Logs:** 234 service log entries since deploy. Zero matches for `PREVIEW_MARKER_7Q2X`, the answer text, `echo-practice-demo` or `PUBLIC_DEMO_UNEXPECTED_OUTBOUND`. App text lines are only Next.js startup and the fixed "Public demo refused a request at the rate limit." Error Reporting is disabled in this project, so it holds no reports; stderr was covered by the log scan.
 - **Withdraw rehearsal:** `--ingress internal` made the URL return 404. Restoring `--ingress all` brought back the IAP 302.
 
-**Still open before any public launch:** promote a CI-tested image (Workload Identity Federation) or run the CI image suite against this digest; get explicit owner launch approval to remove IAP and grant `allUsers`; and decide separately about the original `echo-coach` service.
+## Launch (2026-11-25)
+
+- The owner approved the launch, accepting the rebuilt image as tested by the preview checks rather than by promoting a CI-tested image.
+- Ran `gcloud run services update --no-iap` and granted `allUsers` `roles/run.invoker`. Public checks: `/` 200 with the home content, `/practice` 200, `/legacy` and `/api/session` 404, and a cross-site POST to `/api/practice/evaluate` 403.
+- Original `echo-coach` service: the owner asked for a low budget. The `$5` project budget already covers it (budgets apply per project). It was also capped at one instance (`--max 1`) and still serves. It remains public and in real mode (`USE_MOCK=false`, with a Gemini key); it had no requests in the last 30 days.
+- To withdraw: `--ingress internal`, or remove the `allUsers` binding.
+
+**Still open after launch:** promote a CI-tested image (Workload Identity Federation) or run the CI image suite against this digest; and decide whether to restrict, quota-limit or delete the original `echo-coach` service.
 
 ## Facts checked (read-only, 2026-11-25)
 

@@ -38,9 +38,14 @@ export interface SpeechJob {
   estimatedSeconds: number;
   voice: string;
 }
-interface PcmResponse {
+interface SpeechResponse {
   bytes: Buffer;
   mimeType: string;
+}
+interface SpeechPcm {
+  bytes: Buffer;
+  sampleRate: number;
+  durationSeconds: number;
 }
 export const sha256 = (value: Buffer | string) =>
   createHash("sha256").update(value).digest("hex");
@@ -111,12 +116,70 @@ export function executionKey(
   return env.GEMINI_API_KEY;
 }
 
-export function pcmDuration({ bytes, mimeType }: PcmResponse) {
-  // Gemini emits raw PCM in an L16 part. An omitted channels parameter means mono.
+function unexpectedFormat(): never {
+  throw new Error(
+    "Unexpected speech format; expected 16-bit mono PCM in a 16–48 kHz WAV or raw 24 kHz PCM.",
+  );
+}
+
+function parseWave(bytes: Buffer): SpeechPcm {
+  if (
+    bytes.length < 12 ||
+    bytes.toString("latin1", 0, 4) !== "RIFF" ||
+    bytes.readUInt32LE(4) !== bytes.length - 8 ||
+    bytes.toString("latin1", 8, 12) !== "WAVE"
+  ) {
+    unexpectedFormat();
+  }
+  let sampleRate: number | undefined;
+  let data: Buffer | undefined;
+  for (let offset = 12; offset < bytes.length; ) {
+    if (bytes.length - offset < 8) unexpectedFormat();
+    const tag = bytes.toString("latin1", offset, offset + 4);
+    const size = bytes.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    const end = start + size;
+    const next = end + (size % 2); // RIFF pads odd chunk sizes to a word boundary.
+    if (next > bytes.length) unexpectedFormat();
+    if (tag === "fmt ") {
+      if (sampleRate !== undefined || size < 16) unexpectedFormat();
+      const rate = bytes.readUInt32LE(start + 4);
+      if (
+        bytes.readUInt16LE(start) !== 1 ||
+        bytes.readUInt16LE(start + 2) !== 1 ||
+        rate < 16_000 ||
+        rate > 48_000 ||
+        bytes.readUInt32LE(start + 8) !== rate * 2 ||
+        bytes.readUInt16LE(start + 12) !== 2 ||
+        bytes.readUInt16LE(start + 14) !== 16
+      ) {
+        unexpectedFormat();
+      }
+      sampleRate = rate;
+    } else if (tag === "data") {
+      if (data || size === 0 || size % 2 !== 0) unexpectedFormat();
+      data = bytes.subarray(start, end);
+    }
+    offset = next;
+  }
+  if (sampleRate === undefined || !data) unexpectedFormat();
+  return {
+    bytes: data,
+    sampleRate,
+    durationSeconds: data.length / (2 * sampleRate),
+  };
+}
+
+export function decodeSpeechAudio({
+  bytes,
+  mimeType,
+}: SpeechResponse): SpeechPcm {
   const [type, ...options] = mimeType
     .toLowerCase()
     .split(";")
     .map((option) => option.trim());
+  if (type === "audio/wav" || type === "audio/x-wav") return parseWave(bytes);
+  // Preserve the provider's existing raw PCM contract; omitted channels means mono.
   const parameters = new Map(
     options.map((option) => option.split("=", 2) as [string, string]),
   );
@@ -128,18 +191,20 @@ export function pcmDuration({ bytes, mimeType }: PcmResponse) {
     !bytes.length ||
     bytes.length % 2 !== 0
   ) {
-    throw new Error(
-      "Unexpected speech format; expected 24 kHz 16-bit mono PCM.",
-    );
+    unexpectedFormat();
   }
-  return bytes.length / (2 * SAMPLE_RATE);
+  return {
+    bytes,
+    sampleRate: SAMPLE_RATE,
+    durationSeconds: bytes.length / (2 * SAMPLE_RATE),
+  };
 }
 
 export async function generateSpeech(
   jobs: readonly SpeechJob[],
   deps: {
-    generate: (job: SpeechJob, signal: AbortSignal) => Promise<PcmResponse>;
-    save: (job: SpeechJob, raw: Buffer, seconds: number) => void;
+    generate: (job: SpeechJob, signal: AbortSignal) => Promise<SpeechResponse>;
+    save: (job: SpeechJob, audio: SpeechPcm) => void;
     log: (text: string) => void;
   },
 ) {
@@ -154,9 +219,10 @@ export async function generateSpeech(
     requests++;
     deps.log(`Request ${requests}: ${job.kind}:${job.id}`);
     try {
-      const pcm = await deps.generate(job, AbortSignal.timeout(TIMEOUT_MS));
-      const duration = pcmDuration(pcm);
-      seconds += duration;
+      const pcm = decodeSpeechAudio(
+        await deps.generate(job, AbortSignal.timeout(TIMEOUT_MS)),
+      );
+      seconds += pcm.durationSeconds;
       if (estimateCost(seconds) > COST_LIMIT) {
         stopped = "cost";
         break;
@@ -165,7 +231,7 @@ export async function generateSpeech(
         stopped = "duration";
         break;
       }
-      deps.save(job, pcm.bytes, duration);
+      deps.save(job, pcm);
     } catch {
       // Never print SDK errors, URLs, headers, response bodies or keys.
       throw new Error(
@@ -180,8 +246,7 @@ export function saveAudio(
   root: string,
   manifest: DemoAudioAsset[],
   job: SpeechJob,
-  raw: Buffer,
-  durationSeconds: number,
+  { bytes, sampleRate, durationSeconds }: SpeechPcm,
   model = MODEL,
 ) {
   const manifestFile = join(root, MANIFEST_FILE);
@@ -199,7 +264,7 @@ export function saveAudio(
         "-f",
         "s16le",
         "-ar",
-        String(SAMPLE_RATE),
+        String(sampleRate),
         "-ac",
         "1",
         "-i",
@@ -214,7 +279,7 @@ export function saveAudio(
         "+faststart",
         encoded,
       ],
-      { input: raw, timeout: TIMEOUT_MS },
+      { input: bytes, timeout: TIMEOUT_MS },
     );
     if (conversion.status !== 0) throw new Error("AAC encoding failed.");
     const file = readFileSync(encoded);
@@ -335,7 +400,7 @@ async function main(args: string[]) {
       if (!data || !mimeType) throw new Error("Missing audio data.");
       return { mimeType, bytes: Buffer.from(data, "base64") };
     },
-    save: (job, raw, seconds) => saveAudio(root, manifest, job, raw, seconds),
+    save: (job, audio) => saveAudio(root, manifest, job, audio),
     log: console.log,
   });
   console.log(

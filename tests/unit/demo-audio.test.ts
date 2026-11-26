@@ -12,7 +12,7 @@ import {
   estimateCost,
   executionKey,
   generateSpeech,
-  pcmDuration,
+  decodeSpeechAudio,
   planSpeech,
   sha256,
   speechJobs,
@@ -24,6 +24,122 @@ const jobs = speechJobs();
 const raw = (seconds: number, mimeType = "audio/L16;codec=pcm;rate=24000") => ({
   bytes: Buffer.alloc(seconds * 48_000),
   mimeType,
+});
+
+function wav({
+  sampleRate = 24_000,
+  channels = 1,
+  bits = 16,
+  format = 1,
+  extra = false,
+  data = true,
+}: {
+  sampleRate?: number;
+  channels?: number;
+  bits?: number;
+  format?: number;
+  extra?: boolean;
+  data?: boolean;
+} = {}) {
+  const chunk = (type: string, payload: Buffer) => {
+    const header = Buffer.alloc(8);
+    header.write(type);
+    header.writeUInt32LE(payload.length, 4);
+    return Buffer.concat([header, payload, Buffer.alloc(payload.length % 2)]);
+  };
+  const frameBytes = channels * (bits / 8);
+  const fmt = Buffer.alloc(16);
+  fmt.writeUInt16LE(format, 0);
+  fmt.writeUInt16LE(channels, 2);
+  fmt.writeUInt32LE(sampleRate, 4);
+  fmt.writeUInt32LE(sampleRate * frameBytes, 8);
+  fmt.writeUInt16LE(frameBytes, 12);
+  fmt.writeUInt16LE(bits, 14);
+  const samples = Buffer.alloc(sampleRate * frameBytes);
+  samples.writeUInt8(123, 0);
+  const body = Buffer.concat([
+    Buffer.from("WAVE"),
+    ...(extra ? [chunk("JUNK", Buffer.from([1, 2, 3]))] : []),
+    chunk("fmt ", fmt),
+    ...(extra ? [chunk("LIST", Buffer.from("INFO"))] : []),
+    ...(data ? [chunk("data", samples)] : []),
+  ]);
+  const header = Buffer.alloc(8);
+  header.write("RIFF");
+  header.writeUInt32LE(body.length, 4);
+  return {
+    bytes: Buffer.concat([header, body]),
+    mimeType: "audio/wav",
+    samples,
+  };
+}
+
+test("standard provider WAV duration comes from its data chunk and existing raw L16 is accepted", () => {
+  const provider = wav();
+  assert.deepEqual(decodeSpeechAudio(provider), {
+    bytes: provider.samples,
+    sampleRate: 24_000,
+    durationSeconds: 1,
+  });
+  const l16 = raw(1);
+  assert.deepEqual(decodeSpeechAudio(l16), {
+    bytes: l16.bytes,
+    sampleRate: 24_000,
+    durationSeconds: 1,
+  });
+});
+
+test("WAV parsing walks padded chunks and accepts WAV aliases and the supported rate bounds", async () => {
+  for (const sampleRate of [16_000, 32_000, 48_000]) {
+    const provider = wav({ sampleRate, extra: true });
+    const received = { ...provider, mimeType: "audio/x-wav" };
+    const expected = {
+      bytes: provider.samples,
+      sampleRate,
+      durationSeconds: 1,
+    };
+    assert.deepEqual(decodeSpeechAudio(received), expected);
+    const result = await generateSpeech(jobs.slice(0, 1), {
+      generate: async () => received,
+      save: (job, audio) => {
+        assert.equal(job, jobs[0]);
+        assert.deepEqual(audio, expected);
+      },
+      log: () => {},
+    });
+    assert.deepEqual(
+      [result.requests, result.seconds, result.stopped],
+      [1, 1, undefined],
+    );
+  }
+});
+
+test("WAV parsing rejects unsupported or malformed audio without leaking provider content", () => {
+  const provider = wav();
+  const oversizedChunk = Buffer.from(provider.bytes);
+  oversizedChunk.writeUInt32LE(0xffffffff, 40);
+  // Add an odd trailing chunk with its RIFF length updated but no alignment byte.
+  const missingPad = Buffer.concat([
+    provider.bytes,
+    Buffer.from("JUNK"),
+    Buffer.from([1, 0, 0, 0, 42]),
+  ]);
+  missingPad.writeUInt32LE(missingPad.length - 8, 4);
+  for (const unsupported of [
+    wav({ channels: 2 }),
+    wav({ bits: 8 }),
+    wav({ format: 3 }),
+    wav({ data: false }),
+    wav({ sampleRate: 15_999 }),
+    wav({ sampleRate: 48_001 }),
+    { ...provider, bytes: provider.bytes.subarray(0, -1) },
+    { ...provider, bytes: oversizedChunk },
+    { ...provider, bytes: missingPad },
+  ])
+    assert.throws(
+      () => decodeSpeechAudio(unsupported),
+      /^Error: Unexpected speech format;/,
+    );
 });
 
 test("manifest is either deliberately empty or exactly matches all current starter question and polished texts", () => {
@@ -198,7 +314,7 @@ test("generation counts mock requests, rejects invalid PCM, and stops at the req
     raw(0),
     { ...raw(0), bytes: Buffer.alloc(1) },
   ])
-    assert.throws(() => pcmDuration(bad), /Unexpected speech format/);
+    assert.throws(() => decodeSpeechAudio(bad), /Unexpected speech format/);
   const fakePlan: SpeechJob[] = Array.from({ length: 31 }, () => jobs[0]);
   let uploads = 0,
     files = 0;

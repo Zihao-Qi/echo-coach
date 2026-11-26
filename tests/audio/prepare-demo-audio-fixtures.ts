@@ -38,13 +38,12 @@ async function main() {
       mimeType: "audio/L16;codec=pcm;rate=24000",
       bytes: silence,
     }),
-    save: (job, raw, seconds) =>
+    save: (job, audio) =>
       saveAudio(
         root,
         manifest,
         { ...job, voice: "none" },
-        raw,
-        seconds,
+        audio,
         "test-silence",
       ),
     log: () => {},

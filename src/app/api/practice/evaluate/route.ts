@@ -5,6 +5,7 @@ import { DemoPracticeEvaluator } from "../../../../infrastructure/ai/demo/practi
 import { GeminiPracticeEvaluator } from "../../../../infrastructure/ai/gemini/practice-evaluator";
 import { isDemoMode, requirePracticeOwner, requirePracticeWriteOrigin } from "../../../../infrastructure/auth/practice-access";
 import { isMockEvaluationMode, practiceStorageMode } from "../../../../infrastructure/config/practice-runtime";
+import { PUBLIC_DEMO_BUILD } from "../../../../infrastructure/config/public-demo";
 import { localGeminiBudget, localGeminiRequested, requireLocalGeminiRequest } from "../../../../infrastructure/ai/gemini/local-evaluation";
 import type { AnswerEvaluator } from "../../../../application/ports/answer-evaluator";
 import { practiceRepository } from "../../../../infrastructure/persistence/practice-repository";
@@ -18,6 +19,13 @@ export async function POST(request: Request) {
     const parsed = durableSubmissionSchema.safeParse(await readPracticeJson(request));
     if (!parsed.success) return practiceJson({ error: parsed.error.issues[0]?.message || "Invalid answer." }, 400);
     const repository = practiceRepository();
+    if (PUBLIC_DEMO_BUILD) {
+      for (const id of new Set([parsed.data.previousAttemptId, parsed.data.followUpOfAttemptId])) {
+        if (id && !await repository.get(ownerId, id)) {
+          return practiceJson({ code: "demo-history-reset", error: "The earlier demo answer is no longer available. Your draft is still here." }, 409);
+        }
+      }
+    }
     const question = await resolveQuestionSeed(ownerId, parsed.data, repository, findQuestion);
     if (!question) return practiceJson({ error: "Question not found." }, 404);
     const useDemo = isMockEvaluationMode();

@@ -1,5 +1,6 @@
 import { evaluationCriteria, type AnswerAttempt, type InterviewQuestion } from "../../domain/interview/practice";
 import type { AttemptRecord } from "../../domain/interview/attempt-record";
+import { PUBLIC_DEMO_BUILD, SAMPLE_FEEDBACK_NOTICE } from "../../infrastructure/config/public-demo";
 import { FollowUpCard } from "./FollowUpCard";
 import { RetryComparisonPanel } from "./RetryComparisonPanel";
 
@@ -77,6 +78,7 @@ export function PracticeFeedback({
               : `Gemini · ${latest.provenance.model}${latest.provenance.thinkingLevel ? " · low thinking" : ""}`}
           </span>
         </div>
+        {PUBLIC_DEMO_BUILD && <p className="mt-3 text-sm text-slate-700">{SAMPLE_FEEDBACK_NOTICE}</p>}
         {latest.evaluation.criteria && (
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {Object.entries(evaluationCriteria).map(([key, label]) => {

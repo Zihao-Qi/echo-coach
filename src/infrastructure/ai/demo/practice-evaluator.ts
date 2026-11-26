@@ -1,12 +1,13 @@
 import type { AnswerEvaluator } from "../../../application/ports/answer-evaluator";
 import type { AnswerEvaluation, InterviewQuestion, PreviousAnswer } from "../../../domain/interview/practice";
+import { SAMPLE_FEEDBACK_NOTICE } from "../../config/public-demo";
 
 // Deliberately illustrative: no keyword heuristics masquerading as correctness assessment.
 export class DemoPracticeEvaluator implements AnswerEvaluator {
   readonly mode = "demo" as const;
   readonly model = "demo-fixture";
   async evaluate(question: InterviewQuestion, answer: string, previous?: PreviousAnswer): Promise<AnswerEvaluation> {
-    const unassessed = { status: "not-assessable" as const, observation: "Demo mode does not assess this dimension. Configure Gemini for an actual review.", excerpt: "" };
+    const unassessed = { status: "not-assessable" as const, observation: "Sample only; this dimension was not assessed.", excerpt: "" };
     return {
       followUp: question.origin === "follow-up" ? null : {
         prompt: question.track === "behavioral" ? "Which decision in this project was yours, and why did you make it?" : "Can you explain the main trade-off and give a concrete example?",
@@ -23,7 +24,7 @@ export class DemoPracticeEvaluator implements AnswerEvaluator {
       strengths: [{ observation: "This excerpt is preserved from your submission. Demo mode does not judge its correctness.", excerpt: answer.slice(0, 120) }],
       gaps: [{ observation: `Check your answer against this rubric item: ${question.rubric.expectedConcepts[0]}.`, nextStep: "Explain the reasoning or add a specific example in your next attempt." }],
       nextSteps: ["Review the rubric, then rewrite your answer in your own words."],
-      uncertainty: ["Illustrative demo feedback only. A configured Gemini evaluator is required for an actual assessment."],
+      uncertainty: [SAMPLE_FEEDBACK_NOTICE],
       suggestedAnswer: "No model answer is generated in demo mode. Use the hints and rubric to develop your own response.",
     };
   }

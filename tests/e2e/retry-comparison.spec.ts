@@ -129,6 +129,49 @@ test("tied timestamps still select the child after reload", async ({ page }) => 
   await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("The child is the retry.");
 });
 
+test("refreshing a completed saved answer starts a new retry without editing the draft", async ({ page }) => {
+  const completed = await record("00000000-0000-4000-8000-000000000081", before, 1);
+  completed.evaluation!.nextSteps = ["Explain the cost of a collision."];
+  const records: AttemptRecord[] = [{ ...completed, status: "pending", evaluation: undefined, provenance: undefined }];
+  await history(page, records);
+  await page.getByRole("button", { name: "Reopen saved answer" }).click();
+  await expect(page.getByRole("button", { name: "Get feedback", exact: true })).toBeEnabled();
+  const cue = page.getByRole("region", { name: "Focus for this retry" });
+  await expect(cue).toHaveCount(0);
+
+  records[0] = completed;
+  await page.getByRole("button", { name: "Refresh history" }).click();
+  await expect(page.getByRole("region", { name: "Answer feedback" })).toBeVisible();
+  await expect(cue).toContainText(completed.evaluation!.nextSteps[0]);
+  await page.route("**/api/practice/evaluate", (route) => route.fulfill({ status: 503, json: { error: "Paused for test." } }));
+  const sent = page.waitForRequest("**/api/practice/evaluate");
+  await page.getByRole("button", { name: "Evaluate my retry", exact: true }).click();
+  const payload = (await sent).postDataJSON();
+  expect(payload).toMatchObject({ previousAttemptId: completed.id, answer: before, submissionId: expect.any(String) });
+  expect(payload.submissionId).not.toBe(completed.id);
+});
+
+for (const hasAction of [true, false]) {
+  test(`retry cue ${hasAction ? "uses the first nonblank gap action" : "is absent when all actions are blank"}`, async ({ page }) => {
+    const first = await record("00000000-0000-4000-8000-000000000091", before, 1);
+    const retry = await record("00000000-0000-4000-8000-000000000092", after, 2, first.id);
+    const action = "Give an example of a collision.";
+    Object.assign(retry.evaluation!, {
+      comparison: { summary: "Fixture retry.", changes: [], nextFocus: " " }, nextSteps: [" ", ""],
+      gaps: [
+        { observation: "First gap", nextStep: " " },
+        { observation: "Second gap", nextStep: hasAction ? action : "" },
+        { observation: "Third gap", nextStep: hasAction ? "Describe a trade-off." : "  " },
+      ],
+    });
+    await history(page, [retry, first]);
+    await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Fixture retry.");
+    const cue = page.getByRole("region", { name: "Focus for this retry" });
+    if (hasAction) await expect(cue.getByText(action, { exact: true })).toBeVisible();
+    else await expect(cue).toHaveCount(0);
+  });
+}
+
 test("recovering an older failed attempt selects its returned feedback", async ({ page }) => {
   const first = await record("00000000-0000-4000-8000-000000000051", before, 1);
   const failed = await record("00000000-0000-4000-8000-000000000052", after, 2, first.id);

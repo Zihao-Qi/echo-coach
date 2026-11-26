@@ -6,9 +6,10 @@ import { initialRound, MAX_ANSWER_LENGTH, MOCK_PROMPTS, reduceRound } from "./ro
 
 const TRACK_LABELS: Record<string, string> = { behavioral: "Behavioral", swe: "Software engineering", "ai-ml": "AI / ML" };
 const CARD = "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
-const BTN_PRIMARY = "rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm enabled:hover:bg-indigo-700 disabled:opacity-50";
-const BTN_SECONDARY = "rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50";
-const BTN_DANGER = "rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100";
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
+const BTN_PRIMARY = `${FOCUS_RING} rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm enabled:hover:bg-indigo-700 disabled:opacity-50`;
+const BTN_SECONDARY = `${FOCUS_RING} rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50`;
+const BTN_DANGER = `${FOCUS_RING} rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100`;
 const TEXTAREA = "mt-2 w-full rounded-xl border border-slate-300 p-3 text-sm leading-6 text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
 
 export function MockInterview() {
@@ -221,7 +222,7 @@ export function MockInterview() {
                           type="button"
                           aria-pressed={turn.questionIndex === activeIdx}
                           onClick={() => setSelectedTurn(turn.questionIndex)}
-                          className={`rounded-lg px-3 py-2 text-xs font-bold ${turn.questionIndex === activeIdx ? "bg-indigo-600 text-white" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
+                          className={`${FOCUS_RING} rounded-lg px-3 py-2 text-xs font-bold ${turn.questionIndex === activeIdx ? "bg-indigo-600 text-white" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
                         >
                           Revisit question {turn.questionIndex + 1}
                         </button>

@@ -133,8 +133,11 @@ export function usePracticeSession({
   const rootQuestionIdForSubmit = target.kind === "followup" ? effectiveRootQuestionId : target.rootQuestionId;
   const followUpOfAttemptId = target.kind === "followup" ? target.followUpOfAttemptId : undefined;
   const cached = submissionCache[activeQuestionId];
-  const resumableSubmission = cached?.questionId === rootQuestionIdForSubmit &&
-    cached?.followUpOfAttemptId === followUpOfAttemptId && cached?.answer === answer ? cached : undefined;
+  // History can confirm completion even if the submit response never reached the client.
+  const resumableSubmission = cached &&
+    cached.questionId === rootQuestionIdForSubmit && cached.followUpOfAttemptId === followUpOfAttemptId &&
+    cached.answer === answer && !questionAttempts.some((attempt) => attempt.id === cached.submissionId)
+    ? cached : undefined;
   // An unchanged recovered submission keeps its original lineage (including no baseline).
   const retryBaselineId = resumableSubmission ? resumableSubmission.previousAttemptId : latest?.id;
   const baseline = useAttemptBaseline(latest?.previousAttemptId, history.records, access.headers);

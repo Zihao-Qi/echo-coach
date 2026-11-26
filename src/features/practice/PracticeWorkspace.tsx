@@ -254,7 +254,7 @@ function PracticeSessionView({
           {PUBLIC_DEMO_BUILD ? "Public demo · History is temporary and may disappear after inactivity or a restart. Use made-up examples and don’t include personal or confidential details." : access.storage === "memory"
             ? `${access.mode === "demo" ? "Demo" : "Google sign-in preview"} · Submitted history lives in this server process only and is lost on restart; cross-device durability is not enabled.`
             : "Private practice · Submitted answers are saved to your account before evaluation. Drafts are not saved until submitted."}{" "}
-          {PUBLIC_DEMO_BUILD ? SAMPLE_FEEDBACK_NOTICE : access.mockEvaluation &&
+          {PUBLIC_DEMO_BUILD ? <span>{SAMPLE_FEEDBACK_NOTICE}</span> : access.mockEvaluation &&
             "Feedback is illustrative, not a correctness assessment. No Gemini requests are made."}
         </p>
         {access.localGemini && (

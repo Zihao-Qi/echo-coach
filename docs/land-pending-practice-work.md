@@ -77,12 +77,18 @@ GPT‑6.2‑Sol (high) in Pi implements on branch `land-pending-practice-work` i
 6. **Hygiene:** `git status --porcelain` in the main checkout is identical before and after; the branch's commits use the owner identity above.
 7. Screenshots at 390 px and 1280 px: default `/practice` with the cue and shortcut, and `/mock-interview` round and debrief; public build `/` and `/practice` showing no mock-interview link and no voice panel. The lead inspects them.
 
+## PR #11 review corrections
+
+Only incomplete submissions may reuse a cached submission ID. When Refresh history shows that a reopened submission completed, an unchanged draft must offer a retry with the selected completed attempt’s cue and ID as its baseline, using a fresh submission ID. Cover this transition and both gap-action fallbacks in default-profile browser tests. In the public HTTPS test, check the cue against the returned evaluation and the notice against the exact sample-feedback text. Make keyboard focus visible on all mock-interview buttons and its home-page link. No changes to evaluation, persistence or deployment.
+
 ## Local verification on the review branch
 
 - Clean `npm ci` on Node 22.23.5. Lint, TypeScript, 93 unit tests, 3 integration tests, and the default and public builds passed.
 - The default profile passed all 52 Playwright tests using installed Chrome in a fresh browser process. An additional synthetic fixture check confirmed the first nonblank gap action is used as the cue, and all-blank actions produce no cue or evaluation request.
 - With a dummy listener on port 3100 and CI mode off, Playwright refused to start rather than reusing the server. The main checkout’s porcelain status was identical before and after.
-- Local HTTPS browser checks of the public build confirmed the mock-interview route is blocked and unlinked, the voice panel is hidden, and a retry shows the cue, shortcut, and sample-feedback notice without outbound browser requests. The public image job includes these assertions but has not run on this branch. Captured the required 390 px and 1280 px views for lead review.
+- Local HTTPS browser checks of the public build confirmed the mock-interview route is blocked and unlinked, the voice panel is hidden, and a retry shows the cue, shortcut, and sample-feedback notice without outbound browser requests. The public image job includes these assertions and passed on the pre-review implementation at `9ecfd21`. Captured the required 390 px and 1280 px views for lead review.
+
+After the PR #11 review corrections, the new history-refresh regression failed on the old implementation (completed feedback visible but no retry cue) and passed with the fix, including an unchanged draft submitted with a fresh ID. Lint, TypeScript, 93 unit tests, 3 integration tests, both builds, and all 55 default Chrome tests passed. All four public HTTPS cases passed locally on the standalone build; the three tests that restart Docker in CI used real local Node-process restarts instead. No outbound socket attempts or sensitive test markers appeared in server logs. The updated image itself still needs CI.
 
 ## Review and merge
 

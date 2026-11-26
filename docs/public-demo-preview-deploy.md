@@ -1,26 +1,28 @@
-**Status:** Deployed and verified as a private preview on 2026-11-25. Reviewed by Gemini 4 Neon High (REVISE, then APPROVE WITH CHANGES; all findings applied). The owner authorized the preview and accepted the rebuild deviation for the preview only. **Launched publicly on 2026-11-25** with the owner's explicit approval (see Launch).
+**Status:** Deployed and verified as a private preview on 2026-11-25. The spec was reviewed by Gemini 4 Neon High before deployment (REVISE, then APPROVE WITH CHANGES; all findings applied); the record sections were reviewed after launch. The owner authorized the preview and accepted the rebuild deviation for the preview, then extended that waiver to the launch. **Launched publicly on 2026-11-25** with the owner's explicit approval (see Launch). The original `echo-coach` service was made private on 2026-11-26.
 
-## Results (2026-11-25)
+## Preview results (2026-11-25, before launch)
 
-- **Budget:** `echo-490312 demo $5 monthly` created by CLI (50/90/100% of actual spend; default billing-admin email). The existing `$100 Monthly Budget Alert` was left unchanged.
+- **Budget:** `echo-490312 demo $5 monthly` created by CLI (50/90/100% of actual spend; default billing-admin email). This deviates from the plan above: the CLI needed `billingbudgets.googleapis.com`. Besides the two planned APIs (Artifact Registry, Cloud Build), the Billing Budgets and IAP APIs are now enabled too. Whether the owner's inbox receives the alert email has not been verified. An existing, separate monthly budget alert was left unchanged.
 - **Build:** Cloud Build `0d6c1cf1-e8fe-4109-80f7-c878a5aabfb8` from `git archive f471413`, on the pinned base `be979e55…bd6eb` (matching CI). Image `us-central1-docker.pkg.dev/echo-490312/echo-demo/echo-coach-demo@sha256:3e78d8d3df7bec0878607e0a515c1ca50ea408665fde3d10ce956b8e0fb667d8`.
 - **Service:** `echo-coach-demo`, revision `echo-coach-demo-00002-lbj`, 100% of traffic, at `https://echo-coach-demo-189032457820.us-central1.run.app`.
   - Settings: revision max 1 / min 0, service-level max set to 1 (the Console had left 20), request-based billing (CPU throttled).
   - Runs as `echo-demo-run`, which has no project roles. Only the demo env is set, with no credentials.
-  - The Run invoker is only the IAP service agent, and the IAP accessor is only `zihaoqi777@gmail.com`.
-- **IAP setup:** the CLI deploy and a Console toggle didn't create an OAuth client in this no-organization project. With the owner's approval, Gemini (browser) created the Web client "Echo demo IAP" (`189032457820-5rjlih3r7sk2l4l9as81oc250trm2doc`) with the IAP redirect URI. The audience was already External/Testing with the owner as the only test user. The lead applied the client with `gcloud iap settings set`, without printing the secret. Unauthenticated requests now get a 302 to Google sign-in.
+  - During the preview, the Run invoker was only the IAP service agent, and the IAP accessor was only `zihaoqi777@gmail.com`.
+- **IAP setup:** the CLI deploy and a Console toggle didn't create an OAuth client in this no-organization project. With the owner's approval, Gemini (browser) created the Web client "Echo demo IAP" with the IAP redirect URI. The audience was already External/Testing with the owner as the only test user. The lead applied the client with `gcloud iap settings set`, without printing the secret. Unauthenticated requests then got a 302 to Google sign-in.
 - **Walk-through (owner, then Gemini in the owner's browser):**
+  - Gemini submitted a synthetic answer containing `PREVIEW_MARKER_7Q2X` (the precondition for the log check below).
   - Home and `/practice` show the sample-feedback notice, with no microphone, sign-in or legacy link. Every visible link leads to `/` or `/practice`.
   - The feedback is labeled "Illustrative demo feedback", and the notice appears beside it. The retry comparison works.
   - Hosted limit: 119 × 200, then 429 with `Retry-After: 33` (the page's own load request accounts for the 120th).
 - **Logs:** 234 service log entries since deploy. Zero matches for `PREVIEW_MARKER_7Q2X`, the answer text, `echo-practice-demo` or `PUBLIC_DEMO_UNEXPECTED_OUTBOUND`. App text lines are only Next.js startup and the fixed "Public demo refused a request at the rate limit." Error Reporting is disabled in this project, so it holds no reports; stderr was covered by the log scan.
 - **Withdraw rehearsal:** `--ingress internal` made the URL return 404. Restoring `--ingress all` brought back the IAP 302.
 
-## Launch (2026-11-25)
+## Launch (2026-11-25) and follow-up (2026-11-26)
 
 - The owner approved the launch, accepting the rebuilt image as tested by the preview checks rather than by promoting a CI-tested image.
 - Ran `gcloud run services update --no-iap` and granted `allUsers` `roles/run.invoker`. Public checks: `/` 200 with the home content, `/practice` 200, `/legacy` and `/api/session` 404, and a cross-site POST to `/api/practice/evaluate` 403.
-- Original `echo-coach` service: the owner asked for a low budget. The `$5` project budget already covers it (budgets apply per project). It was also capped at one instance (`--max 1`) and still serves. At launch it was still public and in real mode (`USE_MOCK=false`, with a Gemini key); it had no requests in the last 30 days. **Made private on 2026-11-26** at the owner's request: the `allUsers` invoker binding was removed (the service now has no invoker bindings) and its URL returns 403. The service, revision and key were kept, so this is reversible.
+- Original `echo-coach` service: the owner asked for a low budget. The `$5` project budget already covers it (budgets apply per project). It was also capped at one instance at the service level (`gcloud run services update --max 1`) and kept serving through the launch. At launch it was still public and in real mode (`USE_MOCK=false`, with a Gemini key); it had no requests in the last 30 days. **Made private on 2026-11-26** at the owner's request: the `allUsers` invoker binding was removed (the service now has no invoker bindings) and its URL returns 403. The service, revision and key were kept, so this is reversible.
+- Turning IAP off removed the IAP service agent's invoker binding (the demo's only invoker is now `allUsers`). Two inert preview leftovers remain: the owner's IAP accessor binding on the service and the "Echo demo IAP" OAuth client. Neither grants access while IAP is off; delete them if IAP is not reused.
 - To withdraw: `--ingress internal`, or remove the `allUsers` binding.
 
 **Still open after launch:** promote a CI-tested image (Workload Identity Federation) or run the CI image suite against this digest; and delete the original `echo-coach` service once the demo covers its features (owner's plan; it stays private until then).
@@ -82,8 +84,8 @@ Within free tiers at preview traffic: Cloud Run (request-based, scales to zero),
 
 ## Separate risk, not changed here
 
-The original `echo-coach` service is open to anyone and holds a Gemini API key. If its code still makes real Gemini, speech or image calls, anyone with the URL can run up charges, and it has no instance cap. Recommend deciding, separately, whether to restrict or delete it. *Resolved 2026-11-26: capped at one instance at launch and made private the next day (see Launch).*
+The original `echo-coach` service is open to anyone and holds a Gemini API key. If its code still makes real Gemini, speech or image calls, anyone with the URL can run up charges, and it has no instance cap. Recommend deciding, separately, whether to restrict or delete it. *Public access closed 2026-11-26: capped at one instance at launch and made private the next day (see Launch). The service and its key remain until it is deleted; revoke the key then.*
 
 ## Rollback
 
-Delete the `echo-coach-demo` service, the `echo-demo` repository, the `echo-demo-run` service account, and the `echo-490312_cloudbuild` bucket if this deploy created it. The two enabled APIs and the budget stay; they cost nothing unused.
+Delete the `echo-coach-demo` service, the `echo-demo` repository, the `echo-demo-run` service account, and the `echo-490312_cloudbuild` bucket if this deploy created it. Delete the IAP accessor binding and the "Echo demo IAP" OAuth client too. The enabled APIs and the budget can stay; they cost nothing unused.

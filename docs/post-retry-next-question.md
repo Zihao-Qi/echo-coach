@@ -1,0 +1,29 @@
+# Try another question after a practice retry
+
+**Status:** Ships in `/practice`, including in the public build. The sidebar already allows question switching. This experiment puts one optional shortcut where a candidate finishes reading a retry comparison. It does not decide what the candidate needs to learn.
+
+## Candidate experience
+
+After retrying **Debugging and testing**, a candidate sees **Try another question in Software engineering: Stable pagination** immediately after the retry comparison (or its existing unavailable-comparison message). Reading feedback does not move focus or open a question. Activating the shortcut selects Stable pagination exactly as its sidebar button would. The candidate can instead stay, edit again, or use the existing follow-up action.
+
+## Behavior contract
+
+- **Eligibility follows the displayed feedback, not the next submission.** Show exactly one shortcut for a completed attempt on the active curated root with a `previousAttemptId`. This includes selecting an older completed root retry from history. Do not use the composer’s `isRetry`, attempt count, score, presence of model comparison prose, or a just-submitted flag. Selecting the first answer hides the shortcut even if later retries exist. A saved/failed submission does not earn a shortcut; if earlier completed feedback remains visible, only that feedback determines eligibility. Exclude follow-ups (including their retries), removed roots and the separate mock interview.
+- **Destination follows catalog order.** Find the active root ID in `starterQuestions`, filter by that catalog entry’s track, then take the next entry with wraparound. No shortcut if the root is missing or there is no different question. Use `Try another question in <track label>: <destination competency>` as both the visible and accessible name, reusing the track navigation label verbatim. Never call the question unseen, recommended, mastered or next by ability. Do not maintain a second ordered list or inspect history to choose the destination.
+- **It is a secondary in-page action.** Use a keyboard-operable button (not a route change), with visible focus. Rendering must not grab focus. Successful activation uses the sidebar’s `handleChooseQuestion(destinationId)` path, including destination heading focus and selection announcement. Preserve drafts in the current workspace and leave submissions unchanged. Show whatever destination history normal selection makes available; do not copy the source answer or promise to restore a prior submission into an empty editor.
+- **Same locks and consent as the sidebar.** Disable activation while evaluation or a hard voice lock is pending. For discardable voice state use the existing discard confirmation. Cancel keeps the source question, draft and recording state; confirm discards only what the existing navigation guard discloses. Neither rendering nor activation submits an answer, uploads audio, transcribes or evaluates. No new history requests to compute eligibility or destination; normal existing selection/baseline reads are permitted.
+- **Out of scope:** new routes, backend or schema changes, storage, analytics, tracking unseen questions, generated recommendations, changes to feedback content, or changes to the mock. Do not deploy or activate a provider to test this.
+
+## Acceptance checks for implementation
+
+| Case | Pass condition |
+| --- | --- |
+| Root retry and ordinary selection | In the local demo, submit a first answer (no shortcut), then a retry (one correctly named shortcut). Rendering the shortcut does not focus it. Activate by keyboard: the intended same-track heading receives focus and the status announces `Selected question: <destination prompt>`. Return via sidebar and verify the source draft and attempts are intact. |
+| History and eligibility | Select the first answer versus a historical retry: eligibility follows the displayed attempt. A saved/failed submission never qualifies on its own; if older completed feedback remains on screen, its eligibility is unchanged. A linked retry without comparison prose or with an off-page baseline still qualifies. No shortcut for a follow-up retry, an archived root, or a track without another entry. |
+| Wrap and revisit | Last entry wraps to the first **within** the track. Seed a destination with both an earlier attempt and a different unsent draft; after activation its own draft is unchanged and its own available history is shown. Repeat with an empty destination draft: neither the source text nor a previous submission populates it. No “fresh start” label. |
+| Recording and pending work | Verify the button is disabled and cannot navigate during a pending evaluation and, separately, during a hard voice lock. With an unapplied recording, canceling discard retains it; confirming selects the destination without applying the transcript or changing either typed draft. |
+| Side effects and layout | Count requests after setup: no evaluation/transcription POST, history scan or suggestion-specific request on render or activation. At narrow and desktop widths the label is readable, does not overflow, and remains secondary to retry feedback. No new UI in the separate mock interview. |
+
+**Verification on the original base:** The checkpoint passed 98 unit/API tests and 62 serial Chrome tests. Browser cases covered keyboard activation, 320 px and 1280 px layouts, wraparound to a previously answered question, failed and historical attempts, recording discard, and no extra app requests on the tested handoff. Neon High and GPT‑6.1‑Sol/high reviewed the implementation; their suggested recovery and empty-draft regression cases are included.
+
+**Evidence boundary:** These checks establish a safe, predictable handoff, not whether candidates prefer it to the sidebar or learn more. If later observation shows it duplicates the sidebar or makes revisits confusing, remove or revise it rather than adding ranking.

@@ -20,6 +20,12 @@ Parent-before-child ordering resolves equal timestamps independently of UUID ord
 
 Owner-scoped `GET /api/practice/attempts/[id]` resolves linked baselines independently of paginated history. UI provides loading, error, and retry states; requests are aborted on cleanup. Backend lease fields are not returned.
 
+## Retry composer cue
+
+The composer shows one saved action beside **Your answer**: the linked attempt's comparison focus, first nonblank next step, or a gap's next step. New answers and first follow-ups have no cue. An unchanged recovered answer keeps its original baseline, including no baseline; editing it uses the currently selected attempt for a new submission. If a recovered baseline is outside the loaded history, the composer reuses its saved record or reads it through the existing owner-scoped route. No evaluation call is made to display the cue.
+
+Gemini 4 Argon / LOW authored the UI. Gemini 4 Neon / High and GPT‑6.1‑Sol / high reviewed and cleared the changes. Playwright covers cue text in the textarea's accessible description, historical selections, unchanged versus edited recovery, same and distinct off-page baselines, follow-up isolation, and saved first answers without a baseline. On the original base, the full 50-test browser suite passed before an additional targeted off-page follow-up test, which also passed. All 95 unit/API tests, lint, and TypeScript checks passed.
+
 ## Independent Pi review
 
 Two read-only Pi reviews were performed; neither reviewer edited code, executed tests, read credentials, or made network/model requests.

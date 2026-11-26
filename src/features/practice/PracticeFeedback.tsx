@@ -21,6 +21,8 @@ interface PracticeFeedbackProps {
   onAnswerFollowUp: () => void;
   onRetryOriginalAnswer: () => void;
   onSelectAttempt: (attempt: AnswerAttempt) => void;
+  nextQuestionLabel?: string;
+  onChooseNextQuestion?: () => void;
 }
 
 export function PracticeFeedback({
@@ -37,6 +39,8 @@ export function PracticeFeedback({
   onAnswerFollowUp,
   onRetryOriginalAnswer,
   onSelectAttempt,
+  nextQuestionLabel,
+  onChooseNextQuestion,
 }: PracticeFeedbackProps) {
   const latestIndex = questionAttempts.findIndex((item) => item.id === latest.id);
   const previousIndex = previous
@@ -105,6 +109,18 @@ export function PracticeFeedback({
           attempt={latest}
           previousNumber={previousIndex >= 0 ? previousIndex + 1 : undefined}
         />
+        {nextQuestionLabel && onChooseNextQuestion && (
+          <div className="mt-4">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onChooseNextQuestion}
+              className={`${button} max-w-full text-left whitespace-normal break-words`}
+            >
+              {nextQuestionLabel}
+            </button>
+          </div>
+        )}
         <h3 className="mt-6 font-bold">What to build on</h3>
         {latest.evaluation.strengths.map((item, index) => (
           <div key={index} className="mt-3 rounded-xl bg-emerald-50 p-4">

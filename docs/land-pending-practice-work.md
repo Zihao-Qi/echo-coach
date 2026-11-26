@@ -1,6 +1,6 @@
 # Land the pending practice improvements on `main`
 
-**Status:** Spec for review. Not implemented.
+**Status:** Implemented on the review branch based on `1b88ff9`; not merged or deployed.
 
 ## Why
 
@@ -76,6 +76,13 @@ GPT‑6.2‑Sol (high) in Pi implements on branch `land-pending-practice-work` i
 5. **Test safety:** with a dummy server already listening on port 3100, `npm run test:e2e` fails to start instead of reusing it.
 6. **Hygiene:** `git status --porcelain` in the main checkout is identical before and after; the branch's commits use the owner identity above.
 7. Screenshots at 390 px and 1280 px: default `/practice` with the cue and shortcut, and `/mock-interview` round and debrief; public build `/` and `/practice` showing no mock-interview link and no voice panel. The lead inspects them.
+
+## Local verification on the review branch
+
+- Clean `npm ci` on Node 22.23.5. Lint, TypeScript, 93 unit tests, 3 integration tests, and the default and public builds passed.
+- The default profile passed all 52 Playwright tests using installed Chrome in a fresh browser process. An additional synthetic fixture check confirmed the first nonblank gap action is used as the cue, and all-blank actions produce no cue or evaluation request.
+- With a dummy listener on port 3100 and CI mode off, Playwright refused to start rather than reusing the server. The main checkout’s porcelain status was identical before and after.
+- Local HTTPS browser checks of the public build confirmed the mock-interview route is blocked and unlinked, the voice panel is hidden, and a retry shows the cue, shortcut, and sample-feedback notice without outbound browser requests. The public image job includes these assertions but has not run on this branch. Captured the required 390 px and 1280 px views for lead review.
 
 ## Review and merge
 

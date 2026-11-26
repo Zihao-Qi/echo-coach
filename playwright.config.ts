@@ -30,7 +30,8 @@ export default defineConfig({
   webServer: {
     command: "npm run build && PORT=3100 AUTH_URL=http://127.0.0.1:3100 USE_MOCK=true PRACTICE_AUTH_MODE=demo PRACTICE_STORAGE=memory PRACTICE_TRANSCRIPTION_MODE=demo ALLOW_LOCAL_TRANSCRIPTION=false npm run start:test",
     url: "http://127.0.0.1:3100",
-    reuseExistingServer: !process.env.CI,
+    // This suite submits feedback. Never attach it to a developer's paid-mode server.
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });

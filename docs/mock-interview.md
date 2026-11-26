@@ -1,0 +1,11 @@
+# Three-question typed mock interview
+
+Available in the default profile. The public demo hides the home-page link and blocks `/mock-interview`.
+
+From the home page, choose **Try a three-question mock interview**, or visit `/mock-interview`. The round shows one fixed question each for behavioral, SWE, and AI/ML practice. It intentionally offers no hints, interruptions, or coaching during the round. Skip confirms before dropping a nonblank draft; ending early keeps earlier turns and the current nonblank answer. Empty rounds can be restarted without a debrief.
+
+**Open debrief** is optional and opens a local self-review, not a grade. It asks **Which answer felt hardest?** and waits for the learner to pick any answered or skipped question. The selected turn shows a prewritten hint and an optional second hint; each turn remembers its disclosure state until the round is discarded. Revisions are separate editable drafts; original answers do not change. Round state is tab-page memory only. No login, persistence, recorded speech, application API, or model call is involved. App links warn before abandoning entered text; browser Back, reload, or closing the page may still lose it.
+
+Opus 5.5 High reviewed the design; Gemini 4 Argon / LOW authored the UI. Gemini 4 Neon High and GPT‑6.1‑Sol/high independently cleared the final code. Review led to keyboard-focus and navigation refinements, a neutral empty-round restart, and removing a redundant final-turn action. The debrief follow-up was also independently cleared by Neon and GPT. **On the original base, 97 unit/API tests, 55 serial Chrome tests, lint, TypeScript, and the production build passed.** Browser coverage includes no default answer selection, keyboard hint disclosure, per-turn hint and revision isolation, and reset on discard. The browser tests blocked app API requests and observed none across start, skip, early exit, debrief, revision, and discard; a 390px mobile capture was inspected. No deployment or configuration change was made.
+
+A provider-generated debrief, microphone capture, read-aloud, timing, and content-aware live interruptions are not included. Validate whether the short rehearsal is useful before adding any of them.

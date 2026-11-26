@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practice — Echo Coach</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #F7F5F0;
+      --bg-card: #FFFFFF;
+      --bg-stone: #EFECE6;
+      --border: #E0DCD3;
+      --border-strong: #C8C3B8;
+      --ink: #1C1B19;
+      --ink-hover: #33312D;
+      --on-ink: #FFFFFF;
+      --body: #44423D;
+      --muted: #5C5952;
+      --marigold: #995300;
+      --marigold-hover: #7D4300;
+      --marigold-dark: #F2A93B;
+      --marigold-dark-hover: #F5B85C;
+      --dark-bg: #161513;
+      --dark-surface: #22201D;
+      --dark-border: #36332E;
+      --dark-ink: #F7F5F0;
+      --dark-muted: #CFCAC2;
+      --success: #235B3A;
+      --success-tint: #ECF3EE;
+      --success-border: #BDD4C4;
+      --danger: #9A1C2E;
+      --danger-tint: #FDF2F4;
+      --danger-border: #F2BDC5;
+      --disabled-bg: #E6E2DA;
+      --disabled-border: #C8C3B8;
+      --disabled-text: #504D47;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-canvas);
+      color: var(--ink);
+    }
+    .font-display {
+      font-family: 'Outfit', sans-serif;
+    }
+    .font-mono-timer {
+      font-family: 'Fira Code', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+    .card-stone {
+      background-color: var(--bg-stone);
+      border: 1px solid var(--border);
+    }
+    .card-ink-active {
+      background-color: var(--bg-card);
+      border: 1.5px solid var(--ink);
+    }
+    .card-dark {
+      background-color: var(--dark-bg);
+      color: var(--dark-ink);
+    }
+    .dark-inset {
+      background-color: var(--dark-surface);
+      border: 1px solid var(--dark-border);
+    }
+    .btn-primary {
+      background-color: var(--ink);
+      color: var(--on-ink);
+      min-height: 44px;
+    }
+    .btn-primary:hover {
+      background-color: var(--ink-hover);
+    }
+    .btn-secondary {
+      background-color: var(--bg-card);
+      color: var(--ink);
+      border: 1.5px solid var(--ink);
+      min-height: 44px;
+    }
+    .btn-secondary:hover {
+      background-color: var(--bg-stone);
+    }
+    .btn-neutral {
+      background-color: var(--bg-card);
+      color: var(--ink);
+      border: 1px solid var(--border-strong);
+      min-height: 44px;
+    }
+    .btn-neutral:hover {
+      background-color: var(--bg-stone);
+    }
+    .btn-play-light {
+      background-color: var(--marigold);
+      color: var(--on-ink);
+      min-height: 44px;
+    }
+    .btn-play-light:hover {
+      background-color: var(--marigold-hover);
+    }
+    .btn-play-dark {
+      background-color: var(--marigold-dark);
+      color: var(--ink);
+      min-height: 44px;
+    }
+    .btn-play-dark:hover {
+      background-color: var(--marigold-dark-hover);
+    }
+    .btn-danger {
+      background-color: var(--danger-tint);
+      color: var(--danger);
+      border: 1px solid var(--danger-border);
+      min-height: 44px;
+    }
+    .btn-disabled,
+    button:disabled {
+      background-color: var(--disabled-bg);
+      color: var(--disabled-text);
+      border: 1px solid var(--disabled-border);
+      min-height: 44px;
+      cursor: not-allowed;
+    }
+    .nav-link {
+      color: var(--ink);
+      min-height: 44px;
+    }
+    .nav-link:hover {
+      background-color: var(--bg-stone);
+      text-decoration: underline;
+      text-decoration-color: var(--marigold);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+    }
+    .inline-link {
+      color: var(--ink);
+      text-decoration: underline;
+      text-decoration-color: var(--marigold);
+      text-underline-offset: 3px;
+    }
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+    .card-dark a:focus-visible,
+    .card-dark button:focus-visible {
+      outline: 2px solid var(--marigold-dark);
+      outline-offset: 2px;
+    }
+    .input-field {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      color: var(--ink);
+    }
+    .input-field:focus {
+      border-color: var(--ink);
+    }
+    .notice-neutral {
+      background-color: var(--bg-stone);
+      border: 1px solid var(--border-strong);
+      color: var(--ink);
+    }
+    .success-box {
+      background-color: var(--success-tint);
+      border: 1px solid var(--success-border);
+    }
+    .stepper-current {
+      background-color: var(--bg-card);
+      border: 2px solid var(--marigold);
+    }
+    .scroll-strip {
+      scrollbar-width: none;
+    }
+    .scroll-strip::-webkit-scrollbar {
+      display: none;
+    }
+    .scroll-fade {
+      mask-image: linear-gradient(to right, black 92%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, black 92%, transparent 100%);
+    }
+
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <div class="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+    <header class="card flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl px-4 py-2 sm:px-5">
+      <div class="flex items-center gap-2.5">
+        <a href="home.html" class="font-display inline-flex min-h-[44px] items-center text-xl font-extrabold tracking-tight text-[var(--ink)]">
+          echo<span class="font-semibold text-[var(--muted)]">coach</span>
+        </a>
+        <span class="rounded-md bg-[var(--bg-stone)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
+          Public demo
+        </span>
+      </div>
+      <nav aria-label="Main navigation" class="-ml-3 flex flex-wrap items-center gap-0.5 sm:ml-0 sm:gap-1.5">
+        
+        <a href="home.html" class="nav-link inline-flex items-center rounded-xl px-3 text-sm font-semibold">Home</a>
+        <a href="mock-interview.html" class="nav-link inline-flex items-center rounded-xl px-3 text-sm font-semibold">Mock interview</a>
+        <a href="recap.html" class="btn-secondary inline-flex items-center rounded-xl px-3 text-xs font-bold sm:px-3.5 sm:text-sm">Session recap</a>
+    
+      </nav>
+    </header>
+
+    <main class="mt-6">
+
+      <!-- Compact Track & Scalable Question Switcher -->
+      <section aria-label="Track and question selector" class="card rounded-2xl p-3.5 sm:p-4">
+        <div class="flex items-center gap-1 sm:gap-1.5" role="group" aria-label="Interview track">
+          <button type="button" aria-pressed="false" class="nav-link whitespace-nowrap rounded-xl px-2.5 text-xs font-bold sm:px-3.5 sm:text-sm">Behavioral</button>
+          <button type="button" aria-pressed="true" class="btn-primary whitespace-nowrap rounded-xl px-3 text-xs font-bold sm:px-4 sm:text-sm">Software engineering</button>
+          <button type="button" aria-pressed="false" class="nav-link whitespace-nowrap rounded-xl px-2.5 text-xs font-bold sm:px-3.5 sm:text-sm">AI / ML</button>
+        </div>
+
+        <!-- Mobile: Compact select with custom chevron and right padding -->
+        <div class="relative mt-3 border-t border-[var(--border)] pt-3 sm:hidden">
+          <label for="mobile-question-select" class="sr-only">Choose a question</label>
+          <select id="mobile-question-select" class="input-field min-h-[44px] w-full appearance-none rounded-xl pl-3.5 pr-10 text-sm font-semibold">
+            <option>Data structures &amp; complexity</option>
+            <option selected>Debugging and testing (1 attempt)</option>
+            <option>Stable pagination</option>
+            <option>Rate limiting and backpressure</option>
+            <option>Safe schema migrations</option>
+          </select>
+          <svg class="pointer-events-none absolute right-3.5 top-[calc(50%+6px)] h-4 w-4 -translate-y-1/2 text-[var(--ink)]" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 8l4 4 4-4" />
+          </svg>
+        </div>
+
+        <!-- Desktop: Horizontal scroll strip with left/right scroll buttons -->
+        <div class="mt-3 hidden items-center gap-2 border-t border-[var(--border)] pt-3 sm:flex">
+          <button type="button" disabled aria-label="Scroll questions left" class="btn-disabled inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 5l-5 5 5 5" />
+            </svg>
+          </button>
+
+          <div class="scroll-strip scroll-fade flex min-w-0 flex-1 items-center gap-2 overflow-x-auto" role="group" aria-label="Questions in Software engineering">
+            <button type="button" aria-pressed="false" class="btn-neutral shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-semibold">
+              Data structures &amp; complexity
+            </button>
+            <button type="button" aria-pressed="true" class="btn-primary shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-bold">
+              Debugging and testing · 1 attempt
+            </button>
+            <button type="button" aria-pressed="false" class="btn-neutral shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-semibold">
+              Stable pagination
+            </button>
+            <button type="button" aria-pressed="false" class="btn-neutral shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-semibold">
+              Rate limiting &amp; backpressure
+            </button>
+            <button type="button" aria-pressed="false" class="btn-neutral shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-semibold">
+              Safe schema migrations
+            </button>
+          </div>
+
+          <button type="button" aria-label="Scroll questions right" class="btn-neutral inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl transition">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 5l5 5-5 5" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Question Card -->
+      <section aria-labelledby="question-heading" class="card mt-5 rounded-3xl p-5 sm:p-7">
+        <p class="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Debugging and testing</p>
+        <h1 id="question-heading" class="font-display mt-2 text-2xl font-bold leading-snug text-[var(--ink)] sm:text-3xl">
+          An API sometimes returns duplicate records. How would you investigate and prevent the issue?
+        </h1>
+
+        <!-- Prerecorded Audio Player (Marigold Play button & progress bar) -->
+        <div class="card-stone mt-5 flex flex-wrap items-center gap-4 rounded-2xl p-3.5 sm:px-4">
+          <button type="button" class="btn-play-light inline-flex shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-bold transition">
+            <svg class="h-4 w-4 shrink-0 fill-current" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+            </svg>
+            <span>Listen to the question</span>
+          </button>
+          <div class="flex min-w-[180px] flex-1 items-center gap-3">
+            <div class="h-2 flex-1 overflow-hidden rounded-full border border-[var(--border-strong)] bg-[var(--bg-card)]" aria-hidden="true">
+              <div class="h-full w-1/3 rounded-full bg-[var(--marigold)]"></div>
+            </div>
+            <span class="font-mono-timer shrink-0 text-xs font-medium text-[var(--ink)]">0:06 / 0:18</span>
+          </div>
+          <span class="text-xs text-[var(--muted)]">Prerecorded audio</span>
+        </div>
+
+        <!-- Progressive Hints -->
+        <div class="card-stone mt-4 rounded-2xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm leading-6 text-[var(--ink)]">
+              <strong class="font-bold text-[var(--ink)]">Hint 1:</strong> First clarify what duplicate means and collect a reproducible example.
+            </p>
+            <button type="button" class="btn-neutral shrink-0 rounded-xl px-4 text-xs font-bold transition">
+              Show another hint
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Answer Area -->
+      <section aria-label="Your answer" class="card mt-5 overflow-hidden rounded-3xl">
+        <!-- Sample Focus Cue (Marigold label on calm neutral strip) -->
+        <div class="border-b border-[var(--border)] bg-[var(--bg-canvas)] px-5 py-3.5 sm:px-7">
+          <p class="text-xs font-bold uppercase tracking-wider text-[var(--marigold)]">Sample focus for this retry</p>
+          <p class="mt-1 text-sm font-medium text-[var(--ink)]">
+            Review your changes against the rubric: clarify and reproduce.
+          </p>
+        </div>
+
+        <div class="space-y-5 p-5 sm:p-7">
+          <!-- Post-Recording Sample Transcript Panel (Neutral stone, not yellow/orange) -->
+          <div class="notice-neutral rounded-2xl p-4 sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-start gap-2.5">
+                <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--ink)] text-[11px] font-bold text-[var(--ink)]" aria-hidden="true">i</span>
+                <div>
+                  <h2 class="text-sm font-bold text-[var(--ink)]">Sample transcript</h2>
+                  <p class="mt-0.5 text-xs text-[var(--body)]">
+                    Recording stopped. Demo does not recognize live speech — edit this sample before applying.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" class="btn-neutral inline-flex items-center rounded-xl px-3.5 text-xs font-bold transition">
+                  Re-record
+                </button>
+                <button type="button" class="btn-neutral inline-flex items-center rounded-xl px-3.5 text-xs font-semibold text-[var(--body)] transition">
+                  Discard
+                </button>
+              </div>
+            </div>
+
+            <label for="voice-sample-transcript" class="sr-only">Editable sample transcript</label>
+            <textarea id="voice-sample-transcript" rows="5" class="input-field mt-3 w-full rounded-xl p-3 text-sm leading-6">First I would check whether duplicate rows exist in the database table or only appear in the JSON response. If only one row exists in storage, I would inspect one-to-many joins and unstable offset pagination.</textarea>
+
+            <div class="mt-3">
+              <button type="button" class="btn-secondary inline-flex items-center rounded-xl px-4 text-xs font-bold transition">
+                Use in answer draft
+              </button>
+            </div>
+          </div>
+
+          <!-- Typed Answer Form -->
+          <form action="feedback.html">
+            <label for="practice-answer" class="block text-sm font-bold text-[var(--ink)]">
+              Your answer
+            </label>
+            <textarea id="practice-answer" rows="9" class="input-field mt-2 w-full rounded-2xl p-4 text-base leading-7">I would start by reproducing the duplicate response and checking whether the duplicate exists in storage or is created during the read query.
+
+If only one record exists in the database, I would check one-to-many SQL joins and unstable offset pagination. If two rows exist in storage, I would check client retry logs and add an idempotency key with a unique constraint and a regression test.</textarea>
+
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p class="text-xs text-[var(--muted)]">Use made-up examples. No personal details.</p>
+              <a href="feedback.html" class="btn-primary inline-flex items-center gap-2 rounded-xl px-6 text-sm font-bold transition">
+                <span>Submit retry</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </form>
+        </div>
+      </section>
+    
+    </main>
+
+  </div>
+</body>
+</html>

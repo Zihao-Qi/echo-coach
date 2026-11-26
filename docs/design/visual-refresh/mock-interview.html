@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3-Question Mock Interview — Echo Coach</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #F7F5F0;
+      --bg-card: #FFFFFF;
+      --bg-stone: #EFECE6;
+      --border: #E0DCD3;
+      --border-strong: #C8C3B8;
+      --ink: #1C1B19;
+      --ink-hover: #33312D;
+      --on-ink: #FFFFFF;
+      --body: #44423D;
+      --muted: #5C5952;
+      --marigold: #995300;
+      --marigold-hover: #7D4300;
+      --marigold-dark: #F2A93B;
+      --marigold-dark-hover: #F5B85C;
+      --dark-bg: #161513;
+      --dark-surface: #22201D;
+      --dark-border: #36332E;
+      --dark-ink: #F7F5F0;
+      --dark-muted: #CFCAC2;
+      --success: #235B3A;
+      --success-tint: #ECF3EE;
+      --success-border: #BDD4C4;
+      --danger: #9A1C2E;
+      --danger-tint: #FDF2F4;
+      --danger-border: #F2BDC5;
+      --disabled-bg: #E6E2DA;
+      --disabled-border: #C8C3B8;
+      --disabled-text: #504D47;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-canvas);
+      color: var(--ink);
+    }
+    .font-display {
+      font-family: 'Outfit', sans-serif;
+    }
+    .font-mono-timer {
+      font-family: 'Fira Code', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+    .card-stone {
+      background-color: var(--bg-stone);
+      border: 1px solid var(--border);
+    }
+    .card-ink-active {
+      background-color: var(--bg-card);
+      border: 1.5px solid var(--ink);
+    }
+    .card-dark {
+      background-color: var(--dark-bg);
+      color: var(--dark-ink);
+    }
+    .dark-inset {
+      background-color: var(--dark-surface);
+      border: 1px solid var(--dark-border);
+    }
+    .btn-primary {
+      background-color: var(--ink);
+      color: var(--on-ink);
+      min-height: 44px;
+    }
+    .btn-primary:hover {
+      background-color: var(--ink-hover);
+    }
+    .btn-secondary {
+      background-color: var(--bg-card);
+      color: var(--ink);
+      border: 1.5px solid var(--ink);
+      min-height: 44px;
+    }
+    .btn-secondary:hover {
+      background-color: var(--bg-stone);
+    }
+    .btn-neutral {
+      background-color: var(--bg-card);
+      color: var(--ink);
+      border: 1px solid var(--border-strong);
+      min-height: 44px;
+    }
+    .btn-neutral:hover {
+      background-color: var(--bg-stone);
+    }
+    .btn-play-light {
+      background-color: var(--marigold);
+      color: var(--on-ink);
+      min-height: 44px;
+    }
+    .btn-play-light:hover {
+      background-color: var(--marigold-hover);
+    }
+    .btn-play-dark {
+      background-color: var(--marigold-dark);
+      color: var(--ink);
+      min-height: 44px;
+    }
+    .btn-play-dark:hover {
+      background-color: var(--marigold-dark-hover);
+    }
+    .btn-danger {
+      background-color: var(--danger-tint);
+      color: var(--danger);
+      border: 1px solid var(--danger-border);
+      min-height: 44px;
+    }
+    .btn-disabled,
+    button:disabled {
+      background-color: var(--disabled-bg);
+      color: var(--disabled-text);
+      border: 1px solid var(--disabled-border);
+      min-height: 44px;
+      cursor: not-allowed;
+    }
+    .nav-link {
+      color: var(--ink);
+      min-height: 44px;
+    }
+    .nav-link:hover {
+      background-color: var(--bg-stone);
+      text-decoration: underline;
+      text-decoration-color: var(--marigold);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+    }
+    .inline-link {
+      color: var(--ink);
+      text-decoration: underline;
+      text-decoration-color: var(--marigold);
+      text-underline-offset: 3px;
+    }
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+    .card-dark a:focus-visible,
+    .card-dark button:focus-visible {
+      outline: 2px solid var(--marigold-dark);
+      outline-offset: 2px;
+    }
+    .input-field {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      color: var(--ink);
+    }
+    .input-field:focus {
+      border-color: var(--ink);
+    }
+    .notice-neutral {
+      background-color: var(--bg-stone);
+      border: 1px solid var(--border-strong);
+      color: var(--ink);
+    }
+    .success-box {
+      background-color: var(--success-tint);
+      border: 1px solid var(--success-border);
+    }
+    .stepper-current {
+      background-color: var(--bg-card);
+      border: 2px solid var(--marigold);
+    }
+    .scroll-strip {
+      scrollbar-width: none;
+    }
+    .scroll-strip::-webkit-scrollbar {
+      display: none;
+    }
+    .scroll-fade {
+      mask-image: linear-gradient(to right, black 92%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, black 92%, transparent 100%);
+    }
+
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <div class="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+    <header class="card flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl px-4 py-2 sm:px-5">
+      <div class="flex items-center gap-2.5">
+        <a href="home.html" class="font-display inline-flex min-h-[44px] items-center text-xl font-extrabold tracking-tight text-[var(--ink)]">
+          echo<span class="font-semibold text-[var(--muted)]">coach</span>
+        </a>
+        <span class="rounded-md bg-[var(--bg-stone)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">
+          Public demo
+        </span>
+      </div>
+      <nav aria-label="Main navigation" class="-ml-3 flex flex-wrap items-center gap-0.5 sm:ml-0 sm:gap-1.5">
+        
+        <a href="home.html" class="nav-link inline-flex items-center rounded-xl px-3 text-sm font-semibold">Home</a>
+        <a href="practice.html" class="nav-link inline-flex items-center rounded-xl px-3 text-sm font-semibold">Focused practice</a>
+    
+      </nav>
+    </header>
+
+    <main class="mt-6">
+
+      <!-- Part 1: Active Turn in 3-Question Round -->
+      <section aria-labelledby="mock-turn-heading" class="card rounded-3xl p-5 sm:p-7">
+        <!-- 3-Turn Progress Strip (Green ✓ answered, Marigold current, Stone upcoming) -->
+        <ol class="grid gap-2.5 sm:grid-cols-3" aria-label="Round progress">
+          <li class="success-box flex items-center gap-2.5 rounded-xl px-3.5 py-2.5">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--success)] text-white" aria-hidden="true">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5l3.5 3.5 7.5-7.5" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <p class="truncate text-xs font-bold text-[var(--success)]">Behavioral</p>
+              <p class="text-xs text-[var(--ink)]">Answered</p>
+            </div>
+          </li>
+          <li class="stepper-current flex items-center gap-2.5 rounded-xl px-3.5 py-2.5">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--marigold)] text-xs font-bold text-white" aria-hidden="true">2</span>
+            <div class="min-w-0">
+              <p class="truncate text-xs font-bold text-[var(--marigold)]">Software engineering</p>
+              <p class="text-xs font-semibold text-[var(--ink)]">Current question</p>
+            </div>
+          </li>
+          <li class="card-stone flex items-center gap-2.5 rounded-xl px-3.5 py-2.5">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--border-strong)] text-xs font-bold text-[var(--ink)]" aria-hidden="true">3</span>
+            <div class="min-w-0">
+              <p class="truncate text-xs font-bold text-[var(--muted)]">AI / ML</p>
+              <p class="text-xs text-[var(--muted)]">Up next</p>
+            </div>
+          </li>
+        </ol>
+
+        <h1 id="mock-turn-heading" class="font-display mt-6 text-2xl font-bold leading-snug text-[var(--ink)] sm:text-3xl">
+          When would you choose a hash map over a sorted array? Explain the trade-offs.
+        </h1>
+        <p class="mt-2 text-xs text-[var(--muted)]">
+          No hints during the round. Page memory only — leaving this page clears entered text.
+        </p>
+
+        <div class="mt-5">
+          <label for="mock-answer-input" class="block text-sm font-bold text-[var(--ink)]">Your answer</label>
+          <textarea id="mock-answer-input" rows="8" class="input-field mt-2 w-full rounded-2xl p-4 text-sm leading-6">I would choose a hash map when the workload needs fast average O(1) exact-key lookups, insertions, and deletions. In a sorted array, binary search gives O(log n) lookup, but insertion and deletion cost O(n) due to shifting. A sorted array avoids hash overhead and supports ordered iteration and range queries naturally.</textarea>
+        </div>
+
+        <!-- Tidy Mobile Grid & Balanced Desktop Action Bar -->
+        <div class="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+          <div class="col-span-2 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+            <button type="button" class="btn-primary col-span-2 inline-flex items-center justify-center gap-1.5 rounded-xl px-5 text-sm font-bold transition sm:w-auto">
+              <span>Save and continue</span>
+              <span aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="btn-neutral inline-flex items-center justify-center rounded-xl px-4 text-sm font-bold transition sm:w-auto">
+              Skip question
+            </button>
+            <button type="button" class="btn-neutral inline-flex items-center justify-center rounded-xl px-4 text-sm font-semibold text-[var(--body)] transition sm:hidden">
+              End round early
+            </button>
+          </div>
+          <div class="col-span-2 flex flex-wrap gap-2.5 sm:col-span-1">
+            <button type="button" class="btn-neutral hidden items-center justify-center rounded-xl px-4 text-sm font-semibold text-[var(--body)] transition sm:inline-flex">
+              End round early
+            </button>
+            <button type="button" class="btn-danger inline-flex w-full items-center justify-center rounded-xl px-4 text-sm font-bold transition sm:w-auto">
+              Discard round
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section Break -->
+      <div class="my-8 flex items-center gap-4" aria-hidden="true">
+        <div class="h-px flex-1 bg-[var(--border-strong)]"></div>
+        <span class="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">After finishing the round</span>
+        <div class="h-px flex-1 bg-[var(--border-strong)]"></div>
+      </div>
+
+      <!-- Part 2: Optional Self-Review Debrief (Neutral "Start new round") -->
+      <section aria-labelledby="debrief-heading" class="card rounded-3xl p-5 sm:p-7">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+          <h2 id="debrief-heading" class="font-display text-2xl font-bold text-[var(--ink)]">
+            Optional self-review
+          </h2>
+          <button type="button" class="btn-neutral inline-flex items-center rounded-xl px-4 text-xs font-bold transition">
+            Start new round
+          </button>
+        </div>
+
+        <div class="mt-5">
+          <p id="debrief-choice-label" class="text-sm font-bold text-[var(--ink)]">
+            Which answer felt hardest?
+          </p>
+          <div role="group" aria-labelledby="debrief-choice-label" class="mt-3 grid gap-3 md:grid-cols-3">
+            <!-- Q1 -->
+            <div class="card-stone flex flex-col justify-between rounded-2xl p-4">
+              <div>
+                <p class="text-xs font-bold text-[var(--muted)]">Question 1 · Behavioral · Answered</p>
+                <p class="mt-1.5 text-sm font-semibold text-[var(--ink)]">Project you are proud of</p>
+                <p class="mt-1 line-clamp-2 text-xs leading-5 text-[var(--body)]">“I built a small API for a class project and wrote tests for the main endpoints...”</p>
+              </div>
+              <button type="button" aria-pressed="false" class="btn-neutral mt-3 inline-flex w-full items-center justify-center rounded-xl px-3 text-xs font-bold transition">
+                Revisit question 1
+              </button>
+            </div>
+
+            <!-- Q2 (Selected) -->
+            <div class="card-ink-active flex flex-col justify-between rounded-2xl p-4">
+              <div>
+                <p class="text-xs font-bold text-[var(--ink)]">Question 2 · Software eng · Selected</p>
+                <p class="mt-1.5 text-sm font-semibold text-[var(--ink)]">Hash map vs. sorted array</p>
+                <p class="mt-1 line-clamp-2 text-xs leading-5 text-[var(--ink)]">“I would choose a hash map when the workload needs fast average O(1) lookups...”</p>
+              </div>
+              <button type="button" aria-pressed="true" class="btn-primary mt-3 inline-flex w-full items-center justify-center rounded-xl px-3 text-xs font-bold transition">
+                Revisiting question 2
+              </button>
+            </div>
+
+            <!-- Q3 -->
+            <div class="card-stone flex flex-col justify-between rounded-2xl p-4">
+              <div>
+                <p class="text-xs font-bold text-[var(--muted)]">Question 3 · AI / ML · Skipped</p>
+                <p class="mt-1.5 text-sm font-semibold text-[var(--ink)]">Model drops in production</p>
+                <p class="mt-1 text-xs italic text-[var(--muted)]">Skipped — no answer typed.</p>
+              </div>
+              <button type="button" aria-pressed="false" class="btn-neutral mt-3 inline-flex w-full items-center justify-center rounded-xl px-3 text-xs font-bold transition">
+                Revisit question 3
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Turn Hints & Separate Revision -->
+        <div class="card-stone mt-5 space-y-4 rounded-2xl p-4 sm:p-5">
+          <h3 class="font-display text-lg font-bold text-[var(--ink)]">
+            Question 2: When would you choose a hash map over a sorted array?
+          </h3>
+
+          <div class="card rounded-xl p-4">
+            <p class="text-sm leading-6 text-[var(--ink)]">
+              <strong class="font-bold text-[var(--ink)]">Hint:</strong> Compare lookup, insertion, ordered traversal, and memory use rather than citing one complexity number.
+            </p>
+            <div class="mt-3 flex flex-col gap-3 border-t border-[var(--border)] pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-xs leading-5 text-[var(--body)] sm:flex-1">
+                <strong class="text-[var(--ink)]">Extra hint:</strong> Distinguish average O(1) vs. worst-case O(n) hash lookup; sorted arrays support O(log n) binary search but O(n) insertion shifts.
+              </p>
+              <button type="button" aria-expanded="true" class="btn-neutral shrink-0 self-start rounded-xl px-3.5 text-xs font-bold transition sm:self-center">
+                Hide extra hint
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label for="debrief-revision-2" class="block text-sm font-bold text-[var(--ink)]">
+              Revision for question 2 (keeps your original answer unchanged)
+            </label>
+            <textarea id="debrief-revision-2" rows="7" class="input-field mt-2 w-full rounded-xl p-3.5 text-sm leading-6">Hash maps give average O(1) point lookups and updates, with O(n) worst case on collisions and higher memory overhead. Sorted arrays cost O(n) on insert because elements shift, but win for compact memory, cache locality, O(log n) binary search, and range scans.</textarea>
+          </div>
+        </div>
+      </section>
+    
+    </main>
+
+  </div>
+</body>
+</html>

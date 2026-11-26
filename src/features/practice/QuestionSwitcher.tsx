@@ -41,12 +41,21 @@ export function QuestionSwitcher({
     const row = strip.current!,
       content = list.current!,
       outer = frame.current!;
-    const measure = () =>
-      setEdges({
-        overflow: content.offsetWidth > outer.clientWidth + 1,
-        start: row.scrollLeft <= 1,
-        end: row.scrollLeft + row.clientWidth >= row.scrollWidth - 1,
-      });
+    const measure = () => {
+      const overflow =
+        outer.clientWidth > 0 && content.offsetWidth > outer.clientWidth + 1;
+      const start = row.scrollLeft <= 1;
+      const end = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
+      setEdges((current) =>
+        current.overflow === overflow &&
+        current.start === start &&
+        current.end === end
+          ? current
+          : { overflow, start, end },
+      );
+    };
+    row.scrollLeft = 0;
+    measure();
     const observer = new ResizeObserver(measure);
     [row, content, outer].forEach((el) => observer.observe(el));
     row.addEventListener("scroll", measure);
@@ -54,7 +63,7 @@ export function QuestionSwitcher({
       observer.disconnect();
       row.removeEventListener("scroll", measure);
     };
-  }, []);
+  }, [track]);
   const questions = starterQuestions
     .filter((q) => q.track === track)
     .map((q) => {
@@ -64,6 +73,7 @@ export function QuestionSwitcher({
       return {
         id: q.id,
         name: q.competency + (n ? ` · ${n} attempt${n === 1 ? "" : "s"}` : ""),
+        option: q.competency + (n ? ` (${n})` : ""),
       };
     });
   const arrow = (left: boolean) =>
@@ -89,7 +99,7 @@ export function QuestionSwitcher({
       <nav aria-label="Interview track" className="flex flex-wrap gap-1">
         {tracks.map((t) => (
           <button
-            className="pill px-2.5 text-xs sm:px-4 sm:text-sm"
+            className={`${track === t.id ? "primary" : "nav-link"} px-2.5 text-xs sm:px-4 sm:text-sm`}
             aria-pressed={track === t.id}
             disabled={disabled}
             key={t.id}
@@ -101,7 +111,7 @@ export function QuestionSwitcher({
       </nav>
       <div className="relative mt-3 border-t border-line pt-3 sm:hidden">
         <select
-          className="input-field appearance-none py-2 pr-10"
+          className="input-field truncate appearance-none py-2 pr-10 text-sm"
           aria-label="Choose a question"
           disabled={disabled}
           value={question.id}
@@ -114,7 +124,7 @@ export function QuestionSwitcher({
           )}
           {questions.map((q) => (
             <option key={q.id} value={q.id}>
-              {q.name}
+              {q.option}
             </option>
           ))}
         </select>

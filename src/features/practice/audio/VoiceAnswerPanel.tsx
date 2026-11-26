@@ -60,8 +60,8 @@ export function VoiceAnswerPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-sm font-bold text-ink">Record answer (optional)</h3>
-            <span className="rounded-full bg-pebble px-2.5 py-0.5 text-xs font-semibold text-ink">
+            <h2 className="font-display text-sm font-bold text-ink">Record answer (optional)</h2>
+            <span className="rounded-full border border-line bg-card px-2.5 py-0.5 text-xs font-semibold text-ink">
               {isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
             </span>
           </div>

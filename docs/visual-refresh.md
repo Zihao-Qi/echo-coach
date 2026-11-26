@@ -102,11 +102,15 @@ Listen to the question, recording in the public build, the sample polished answe
 5. The color search in "Visual system" returns nothing; `/legacy` screenshots match today's.
 6. Screenshots at 390 px and 1440 px: home (both builds); practice (first answer, hint open, retry with cue, disclosure open); feedback (technical first attempt, technical retry, behavioral, real-feedback fixture); mock interview (answering, round answers, debrief). Gemini 4 Neon High does a visual review against the mockups.
 
+## PR #12 review corrections
+
+Match the reviewed mockups more closely: group feedback in a single white card with hairline separators, keep its companion card and comparison separate, and polish the mobile header, question picker, mock stepper, hints, retry cue, and action layout. Preserve behavior and labels except for the reviewed shorter demo observation, track link names, and explicit current-attempt label. Reset the question strip when switching tracks. Clicking the active attempt is a no-op, and only successful recovery opens the composer. Add browser coverage for a failed retry and recovery from a collapsed composer. Recapture the same screenshots after history loads and with disclosures closed except in the designated open state; keep the legacy pair. No evaluator, API, storage, or deployment changes.
+
 ## Local verification
 
-On Node 22, a clean `npm ci`, lint, TypeScript, both production builds, 93 unit tests, 3 integration tests, and 58 default-profile Chrome tests passed. Real feedback was exercised with routed fixtures only. All four public-demo spec cases passed over local HTTPS against the standalone build, using local Node-process restarts instead of Docker. No outbound attempts or synthetic test markers appeared in the server logs. The updated container is for CI to verify.
+On Node 22, a clean `npm ci`, lint, TypeScript, both production builds, 93 unit tests, 3 integration tests, and 59 default-profile Chrome tests passed after the PR #12 corrections. Real feedback was exercised with routed fixtures only. All four public-demo spec cases passed over local HTTPS against the standalone build, using local Node-process restarts instead of Docker. No outbound attempts or synthetic test markers appeared in the server logs. The updated container is for CI to verify.
 
-The color search found no excluded classes. The 1440 px `/legacy` before/after PNGs were byte-identical with animations paused. The 390 px and 1440 px captures are in `/tmp/echo-lead/vr-shots/` for lead and Neon review.
+The color search found no excluded classes. The 1440 px `/legacy` before/after PNGs were byte-identical with animations paused. The 40 refreshed 390 px and 1440 px captures are in `/tmp/echo-lead/vr-shots/` alongside the unchanged legacy pair, for lead and Neon review. Captures wait for history to settle and show disclosures closed except in the designated open state.
 
 ## Method, review and merge
 

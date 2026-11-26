@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Dialog, type Page } from "@playwright/test";
 
 interface VoiceTestState { calls: number; streams: MediaStream[]; release?: () => void; recorder?: MediaRecorder; staleStop?: () => void }
 declare global { interface Window { voiceTest: VoiceTestState } }
@@ -221,15 +221,29 @@ test("feedback selection confirms discarding voice and preserves the baseline wh
   }
   await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await record(page);
-  page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Attempt 1", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Attempt 1", exact: true })).toBeVisible();
+  const current = page.getByRole("button", { name: "Attempt 2", exact: true });
+  const earlier = page.getByRole("button", { name: "Attempt 1", exact: true });
+  let prompts = 0;
+  const dismiss = async (dialog: Dialog) => {
+    prompts++;
+    await dialog.dismiss();
+  };
+  page.on("dialog", dismiss);
+  await current.click();
+  await expect(current).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("textbox", { name: "Your answer" })).toHaveValue(confirmed);
+  expect(prompts).toBe(0);
+  await earlier.click();
+  await expect.poll(() => prompts).toBe(1);
+  await expect(current).toHaveAttribute("aria-pressed", "true");
+  await expect(earlier).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("button", { name: "Transcribe (demo)", exact: true })).toBeVisible();
+  page.off("dialog", dismiss);
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Attempt 1", exact: true }).click();
+  await earlier.click();
   await expect(page.getByRole("button", { name: "Transcribe (demo)", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", {name:"Attempt 1",exact:true})).toHaveAttribute("aria-pressed","true");
-  await expect(page.getByRole("button", { name: "Attempt 2", exact: true })).toBeVisible();
+  await expect(earlier).toHaveAttribute("aria-pressed", "true");
+  await expect(current).toHaveAttribute("aria-pressed", "false");
 });
 
 for (const kind of ["root", "followup"]) {
@@ -249,7 +263,7 @@ for (const kind of ["root", "followup"]) {
     }
     await page.getByRole("button", { name: "Attempt 1", exact: true }).click();
     await expect(page.getByRole("button", {name:"Attempt 1",exact:true})).toHaveAttribute("aria-pressed","true");
-    await expect(page.getByRole("button", { name: "Attempt 2", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Attempt 2", exact: true })).toHaveAttribute("aria-pressed", "false");
     await page.getByRole("button", { name: "Edit answer", exact: true }).click();
     await record(page);
     page.once("dialog", (dialog) => dialog.dismiss());
@@ -257,7 +271,7 @@ for (const kind of ["root", "followup"]) {
     const entry = kind === "root" ? page.getByRole("button", { name: /^Ownership and impact/ }) : page.getByRole("button", { name: /^Open saved follow-up 1:/ });
     await entry.click();
     await expect(page.getByRole("button", {name:"Attempt 1",exact:true})).toHaveAttribute("aria-pressed","true");
-    await expect(page.getByRole("button", { name: "Attempt 2", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Attempt 2", exact: true })).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByRole("button", { name: "Transcribe (demo)", exact: true })).toBeVisible();
   });
 }

@@ -318,7 +318,7 @@ export function usePracticeSession({
       };
       setSubmissionCache((current) => ({ ...current, [record.questionId]: cachedSubmission }));
       focusQuestionHeading(`Reopened saved follow-up answer for ${derived.question.competency}`);
-      return;
+      return true;
     }
 
     const rootId = record.rootQuestionId ?? record.questionId;
@@ -351,6 +351,7 @@ export function usePracticeSession({
       answer: record.answer,
     } }));
     focusQuestionHeading(`Reopened saved answer for ${savedQuestion.competency}`);
+    return true;
   }
 
   async function submit() {

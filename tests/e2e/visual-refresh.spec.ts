@@ -41,9 +41,28 @@ test("typed technical feedback collapses the composer and spans the full width",
   await expect(
     feedback.getByRole("heading", { name: "Structure outline" }),
   ).toHaveCount(0);
-  const card = feedback
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "What to build on" }) });
+  const card = feedback.getByRole("region", {
+    name: "Sample feedback",
+    exact: true,
+  });
+  for (const name of [
+    "What to build on",
+    "What to improve",
+    "Next step",
+    "Rubric items to check",
+  ]) {
+    await expect(
+      card.getByRole("heading", { name, exact: true }),
+    ).toBeVisible();
+  }
+  await expect(
+    card.getByText("Preserved from your answer. Not assessed.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(
+    (await card.locator("summary").boundingBox())!.height,
+  ).toBeGreaterThanOrEqual(44);
   expect((await card.boundingBox())!.width).toBe(
     (await feedback.boundingBox())!.width,
   );
@@ -75,6 +94,35 @@ test("typed technical feedback collapses the composer and spans the full width",
   await expect(answer(page)).toHaveCount(0);
 });
 
+test("a failed retry leaves the composer open with the draft and the error", async ({
+  page,
+}) => {
+  await page.goto("/practice?track=swe");
+  await submit(page, draft);
+  await expect(edit(page)).toBeVisible();
+  await edit(page).click();
+  await answer(page).fill(revised);
+  await page.route("**/api/practice/evaluate", (route) =>
+    route.fulfill({
+      status: 502,
+      json: { error: "The test retry did not complete." },
+    }),
+  );
+  const retry = page.getByRole("button", {
+    name: "Evaluate my retry",
+    exact: true,
+  });
+  await retry.click();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "The test retry did not complete." }),
+  ).toBeVisible();
+  await expect(answer(page)).toHaveValue(revised);
+  await expect(edit(page)).toHaveCount(0);
+  await expect(retry).toBeEnabled();
+});
+
 async function fixture(q = question): Promise<AttemptRecord> {
   return {
     id: "00000000-0000-4000-8000-000000000711",
@@ -102,7 +150,7 @@ test("overflow controls and the mobile selector preserve an earlier question", a
     competency: "Historical complexity",
   };
   const records = [await fixture(archived)];
-  for (const [index, q] of questions.entries())
+  for (const [index, q] of starterQuestions.entries())
     records.push({
       ...(await fixture(q)),
       id: `00000000-0000-4000-8000-00000000072${index}`,
@@ -120,10 +168,24 @@ test("overflow controls and the mobile selector preserve an earlier question", a
   await expect(right).toBeDisabled();
   await left.click();
   await expect(left).toBeDisabled();
+  await right.click();
+  await page.getByRole("button", { name: "AI / ML", exact: true }).click();
+  await expect(left).toBeDisabled();
+  await expect(right).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Software engineering", exact: true })
+    .click();
+  await expect(left).toBeDisabled();
   await page.setViewportSize({ width: 390, height: 900 });
   const select = page.getByRole("combobox", { name: "Choose a question" });
   await expect(right).toBeHidden();
   await expect(select).toHaveValue(question.id);
+  await expect(
+    select.getByRole("option", {
+      name: `${question.competency} (1)`,
+      exact: true,
+    }),
+  ).toBeAttached();
   const earlier = page.getByRole("button", { name: /Historical complexity/ });
   await expect(earlier).toBeHidden();
   await page.getByText("Earlier questions (1)", { exact: true }).click();

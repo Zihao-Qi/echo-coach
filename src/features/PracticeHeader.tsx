@@ -31,14 +31,16 @@ export function PracticeHeader({
     onClick: onNavigate,
   };
   return (
-    <header className="flex flex-wrap items-center justify-between gap-x-3 border-b border-line pb-3">
+    <header className="flex flex-col items-start gap-x-3 rounded-2xl border border-line bg-card px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
       <div className="flex items-center gap-3">
         <Link
-          className="inline-flex items-center font-display text-2xl font-extrabold tracking-tight"
+          className="inline-flex items-center font-display text-xl tracking-tight"
           href="/"
+          aria-label="echocoach"
           {...guard}
         >
-          echocoach
+          <strong className="font-extrabold">echo</strong>
+          <span className="font-normal text-muted">coach</span>
         </Link>
         {PUBLIC_DEMO_BUILD && (
           <span className="rounded-md bg-pebble px-2 py-1 text-xs font-semibold text-muted">
@@ -46,11 +48,19 @@ export function PracticeHeader({
           </span>
         )}
       </div>
-      <nav aria-label="Main navigation" className="flex flex-wrap items-center">
+      <nav
+        aria-label="Main navigation"
+        className="-ml-2 flex flex-wrap items-center sm:ml-0"
+      >
         {links
           .filter(([id]) => id !== page)
           .map(([id, href, label]) => (
-            <Link key={id} className="nav-link" href={href} {...guard}>
+            <Link
+              key={id}
+              className="nav-link px-2 text-xs sm:px-3 sm:text-sm"
+              href={href}
+              {...guard}
+            >
               {label}
             </Link>
           ))}

@@ -29,9 +29,9 @@ export default function HomePage() {
       <div className="shell">
         <PracticeHeader page="home" />
         <main>
-          <section className="grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-[1.2fr_1fr]">
+          <section className="panel my-6 grid items-center gap-6 lg:grid-cols-[1.2fr_1fr]">
             <div>
-              <h1 className="font-display text-5xl font-bold leading-[1.04] tracking-tight sm:text-6xl">
+              <h1 className="font-display text-4xl font-bold leading-[1.04] tracking-tight sm:text-5xl lg:text-6xl">
                 Good answers are built.
                 <br />
                 Not memorized.
@@ -42,11 +42,14 @@ export default function HomePage() {
                   : "Practice explaining what you know, get specific feedback, and try again."}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link className="primary" href="/practice">
+                <Link className="primary w-full sm:w-auto" href="/practice">
                   Start focused practice
                 </Link>
                 {!PUBLIC_DEMO_BUILD && (
-                  <Link className="action" href="/mock-interview">
+                  <Link
+                    className="action w-full sm:w-auto"
+                    href="/mock-interview"
+                  >
                     Try a three-question mock interview
                   </Link>
                 )}
@@ -96,10 +99,10 @@ export default function HomePage() {
                   </p>
                   <Link
                     href={`/practice?track=${id}`}
-                    className="action"
-                    aria-label={`Practice ${name}`}
+                    className="action w-full justify-between text-left"
                   >
-                    Practice this track →
+                    <span>Practice {name}</span>
+                    <span aria-hidden="true">→</span>
                   </Link>
                 </article>
               ))}

@@ -143,8 +143,7 @@ function PracticeSessionView({
       )
     )
       return;
-    setEditing(true);
-    session.recover(record);
+    if (session.recover(record)) setEditing(true);
   }
   function edit() {
     if (!hardLocked) {
@@ -295,7 +294,7 @@ function PracticeSessionView({
               <h1
                 ref={questionHeadingRef}
                 tabIndex={-1}
-                className="font-display font-bold"
+                className="min-w-0 font-display font-bold break-words"
               >
                 <span>{question.competency}</span>
                 <span className="hidden sm:inline"> · {question.prompt}</span>
@@ -323,9 +322,24 @@ function PracticeSessionView({
                   {question.intent}
                 </p>
                 {question.hints.length > 0 && (
-                  <div className="mt-4 rounded-xl bg-pebble p-3">
+                  <div
+                    className={
+                      hintCount
+                        ? "mt-4 flex flex-col items-start gap-3 rounded-xl bg-pebble p-4 sm:flex-row sm:items-center sm:justify-between"
+                        : "mt-4"
+                    }
+                  >
+                    {hintCount > 0 && (
+                      <div className="space-y-2 text-sm leading-6">
+                        {question.hints.slice(0, hintCount).map((hint, i) => (
+                          <p key={hint}>
+                            Hint {i + 1}: {hint}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                     <button
-                      className="action"
+                      className="action shrink-0"
                       disabled={
                         hardLocked || hintCount >= question.hints.length
                       }
@@ -333,16 +347,27 @@ function PracticeSessionView({
                     >
                       {hintCount ? "Reveal another hint" : "Give me a hint"}
                     </button>
-                    {question.hints.slice(0, hintCount).map((hint, i) => (
-                      <p key={hint} className="mt-2 text-sm leading-6">
-                        Hint {i + 1}: {hint}
-                      </p>
-                    ))}
                   </div>
                 )}
               </section>
-              <section className="panel">
+              <section className="rounded-3xl border border-line bg-card">
+                {retryCue && (
+                  <section
+                    aria-label="Focus for this retry"
+                    className="rounded-t-3xl border-b border-line bg-canvas px-5 py-3.5 sm:px-7"
+                  >
+                    <p className="eyeline text-marigold">
+                      {session.retryCueMode === "demo"
+                        ? "Sample focus for this retry"
+                        : "Focus for this retry"}
+                    </p>
+                    <p id="retry-focus-cue" className="mt-1 text-sm">
+                      {retryCue}
+                    </p>
+                  </section>
+                )}
                 <form
+                  className="p-5 sm:p-7"
                   onSubmit={async (e) => {
                     e.preventDefault();
                     if (hardLocked || voice.hasUnappliedVoiceState) return;
@@ -355,21 +380,6 @@ function PracticeSessionView({
                     }
                   }}
                 >
-                  {retryCue && (
-                    <section
-                      aria-label="Focus for this retry"
-                      className="mb-5 rounded-xl bg-canvas p-4"
-                    >
-                      <p className="eyeline text-marigold">
-                        {session.retryCueMode === "demo"
-                          ? "Sample focus for this retry"
-                          : "Focus for this retry"}
-                      </p>
-                      <p id="retry-focus-cue" className="mt-1 text-sm">
-                        {retryCue}
-                      </p>
-                    </section>
-                  )}
                   {!PUBLIC_DEMO_BUILD && (
                     <VoiceAnswerPanel
                       voice={voice}
@@ -512,9 +522,10 @@ function PracticeSessionView({
                 navigate(() => session.openFollowUpFromAttempt(latest), true)
               }
               onRetryOriginalAnswer={edit}
-              onSelectAttempt={(a) =>
-                navigate(() => session.setSelectedAttempt(a))
-              }
+              onSelectAttempt={(a) => {
+                if (a.id !== latest.id)
+                  navigate(() => session.setSelectedAttempt(a));
+              }}
               nextQuestionLabel={
                 next &&
                 `Try another question in ${trackLabel(next.track)}: ${next.competency}`

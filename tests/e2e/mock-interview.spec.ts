@@ -43,7 +43,7 @@ test("round runs three unaided turns and allows revisiting any reached turn afte
   await expect(page.getByText(first, { exact: true })).toBeVisible();
   await expect(page.getByText(third, { exact: true })).toBeVisible();
   const progress = page.getByRole("list", { name: "Round progress" });
-  await expect(progress.getByText("✓ Answered", { exact: true })).toHaveCount(2);
+  await expect(progress.getByText("Answered", { exact: true })).toHaveCount(2);
   await expect(progress.getByText("Skipped", { exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name:"Round answers" }).getByText("Skipped", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Revisit question 1" })).toHaveCount(0);

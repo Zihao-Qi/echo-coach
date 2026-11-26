@@ -44,7 +44,7 @@ test("branch retry shows its linked baseline, evidence changes, and other attemp
   await expect(feedback).toContainText("expected constant time");
   const attempts = page.getByRole("region", { name: "Attempt comparison" });
   await expect(attempts.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
-  await expect(attempts.getByRole("heading", { name: "Attempt 3", exact: true })).toBeVisible();
+  await expect(attempts.getByRole("heading", { name: "Attempt 3 (current)", exact: true })).toBeVisible();
   const selector = page.getByRole("group", {name:"Attempts"});
   await expect(selector.getByRole("button", {name:"Attempt 3"})).toHaveAttribute("aria-pressed","true");
   await selector.getByRole("button", {name:"Attempt 2"}).click();
@@ -85,7 +85,7 @@ test("historical retries without comparison remain readable", async ({ page }) =
   await expect(page.getByText("No model comparison is available for this retry.", { exact: false })).toBeVisible();
   const shortcut = page.getByRole("button", { name: /^Try another question in / });
   await expect(shortcut).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Attempt 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Attempt 2 (current)", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Attempt 1", exact: true }).click();
   await expect(page.getByRole("button", {name:"Attempt 1",exact:true})).toHaveAttribute("aria-pressed","true");
   await expect(shortcut).toHaveCount(0);
@@ -199,14 +199,15 @@ test("recovering an older failed attempt selects its returned feedback", async (
     await route.fulfill({ contentType: "application/json", body: JSON.stringify({ attempt }) });
   });
   await history(page, records);
-  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit answer", exact: true })).toBeVisible();
+  const draft = page.getByLabel("Your answer", { exact: true });
+  await expect(draft).toHaveCount(0);
   const cue = page.getByRole("region", { name: "Focus for this retry" });
-  await expect(cue).toContainText("This cue belongs to the newest attempt only.");
   await expect(page.getByRole("heading", { name: "Linked earlier answer", exact: true })).toBeVisible();
   expect(baselineReads).toBe(1);
   await page.getByRole("button", { name: "Reopen saved answer" }).click();
   await expect(cue).toContainText("Preserve the original retry baseline.");
-  const draft = page.getByLabel("Your answer", { exact: true });
+  await expect(draft).toHaveValue(failed.answer);
   await draft.fill(`${failed.answer} An edit makes it a new attempt.`);
   await expect(cue).toContainText("This cue belongs to the newest attempt only.");
   await draft.fill(failed.answer);

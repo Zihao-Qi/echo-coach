@@ -48,12 +48,12 @@ test("text practice reveals hints, preserves retries, and does not preload legac
   await expect(page.getByRole("heading", { name: "Criteria", exact: true })).toHaveCount(0);
   await page.getByLabel("Your answer", { exact: true }).fill(`${first} I learned to test failures before deployment.`);
   await page.getByRole("button", { name: "Evaluate my retry" }).click();
-  await expect(page.getByRole("heading", { name: "Attempt 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Attempt 2 (current)", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Retry feedback" })).not.toContainText("Illustrative comparison only");
   await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Focus for the next retry:");
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Attempt 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Attempt 2 (current)", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Attempt 1", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Retry feedback" })).toContainText("Focus for the next retry:");
   await page.getByRole("button", { name:"Edit answer" }).click();

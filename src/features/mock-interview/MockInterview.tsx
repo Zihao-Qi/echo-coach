@@ -19,7 +19,7 @@ const FOCUS_RING =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 const BTN_PRIMARY = `${FOCUS_RING} rounded-xl bg-ink px-5 py-2.5 text-sm font-bold text-white shadow-sm enabled:hover:bg-ink-hover`;
 const BTN_SECONDARY = `${FOCUS_RING} rounded-xl border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold text-body hover:bg-pebble`;
-const BTN_DANGER = `${FOCUS_RING} rounded-xl border border-danger-line bg-danger-tint px-4 py-2.5 text-sm font-semibold text-danger hover:bg-danger-tint`;
+const BTN_DANGER = `${FOCUS_RING} rounded-xl border border-danger-line bg-danger-tint px-4 py-2.5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-line`;
 const TEXTAREA = "input-field mt-2";
 
 export function MockInterview() {
@@ -110,14 +110,14 @@ export function MockInterview() {
           {round.phase !== "ready" && (
             <ol
               aria-label="Round progress"
-              className="mb-5 grid grid-cols-3 gap-2 rounded-2xl border border-line bg-card p-3"
+              className="mb-5 grid gap-2 rounded-2xl border border-line bg-card p-3 sm:grid-cols-3"
             >
               {MOCK_PROMPTS.map((q, i) => {
                 const turn = round.turns.find((t) => t.questionIndex === i);
                 const current = currentIndex === i;
                 const answered = turn && turn.answer !== null;
                 const status = answered
-                  ? "✓ Answered"
+                  ? "Answered"
                   : turn
                     ? "Skipped"
                     : current
@@ -129,12 +129,18 @@ export function MockInterview() {
                   <li
                     key={q.id}
                     aria-current={current ? "step" : undefined}
-                    className={`rounded-xl border p-2 text-xs sm:p-3 ${answered ? "border-success-line bg-success-tint text-success" : current ? "border-marigold text-marigold" : "border-line bg-pebble text-muted"}`}
+                    className={`flex items-center gap-2.5 rounded-xl border p-3 text-xs ${answered ? "border-success-line bg-success-tint text-success" : current ? "border-marigold text-marigold" : "border-line bg-pebble text-muted"}`}
                   >
-                    <span className="block font-bold">
-                      {TRACK_LABELS[q.track]}
+                    <span
+                      aria-hidden="true"
+                      className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full font-bold ${answered ? "bg-success text-white" : current ? "bg-marigold text-white" : "bg-line-strong text-ink"}`}
+                    >
+                      {answered ? "✓" : i + 1}
                     </span>
-                    <span>{status}</span>
+                    <div>
+                      <p className="font-bold">{TRACK_LABELS[q.track]}</p>
+                      <p>{status}</p>
+                    </div>
                   </li>
                 );
               })}
@@ -185,8 +191,7 @@ export function MockInterview() {
                       Question {idx + 1} of {total}
                     </p>
                     <span className="text-xs text-muted">
-                      {TRACK_LABELS[q.track] ?? q.track} · Page memory only
-                      (leaving or browser Back may lose text)
+                      Page memory only (leaving or browser Back may lose text)
                     </span>
                   </div>
                   <h1
@@ -280,7 +285,7 @@ export function MockInterview() {
               return (
                 <div className="space-y-6">
                   <section aria-label="Round answers" className={CARD}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto]">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-widest text-muted">
                           Round review · Self-review only
@@ -292,6 +297,11 @@ export function MockInterview() {
                         >
                           Round answers
                         </h1>
+                        <p className="mt-2 text-xs text-muted">
+                          Answers stay in page memory only; leaving or using
+                          browser Back may lose text. Original responses are
+                          shown verbatim.
+                        </p>
                       </div>
                       <button
                         type="button"
@@ -301,10 +311,6 @@ export function MockInterview() {
                         Start new round
                       </button>
                     </div>
-                    <p className="mt-2 text-xs text-muted">
-                      Answers stay in page memory only; leaving or using browser
-                      Back may lose text. Original responses are shown verbatim.
-                    </p>
                     {omitted > 0 && (
                       <p className="mt-4 rounded-xl border border-line bg-pebble px-4 py-3 text-sm text-body">
                         {omitted} {omitted === 1 ? "question" : "questions"} not
@@ -388,7 +394,7 @@ export function MockInterview() {
                       <div
                         role="group"
                         aria-labelledby="debrief-question-choice"
-                        className="mt-4 flex flex-wrap gap-2"
+                        className="mt-4 grid gap-2 sm:flex sm:flex-wrap"
                       >
                         {round.turns.map((turn) => (
                           <button

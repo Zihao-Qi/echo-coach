@@ -384,7 +384,7 @@ export function usePracticeSession({
       const unavailable = response.status === 429 || response.status >= 500;
       const failureMessage = typeof payload.error === "string" && payload.error ? payload.error :
         unavailable ? "Feedback is temporarily unavailable. Your draft is still here; try again shortly." : "Evaluation failed.";
-      if (response.status === 429 || response.status === 503) {
+      if (PUBLIC_DEMO_BUILD && (response.status === 429 || response.status === 503)) {
         if (!controller.signal.aborted) setError(failureMessage);
         return;
       }

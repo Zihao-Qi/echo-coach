@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isPublicDemoPathAllowed, isPublicPracticeApi } from "./infrastructure/http/public-demo-paths";
 import { PUBLIC_DEMO_BUILD } from "./infrastructure/config/public-demo";
 import { publicDemoRequested, validatePublicDemo } from "./infrastructure/config/public-demo-runtime";
 import { PublicDemoAdmission } from "./infrastructure/http/public-demo-admission";
@@ -10,11 +11,8 @@ function publicDemoProxy(path: string) {
   const headers = { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" };
   try { validatePublicDemo(); }
   catch { return NextResponse.json({ error: "Public demo unavailable." }, { status: 503, headers }); }
-  const practiceApi = /^\/api\/practice\/(?:access|evaluate|attempts(?:\/[0-9a-fA-F-]+)?)$/.test(path);
-  const allowed = practiceApi || path === "/" || path === "/practice" || path === "/practice/" ||
-    path === "/favicon.ico" || path.startsWith("/_next/static/");
-  if (!allowed) return NextResponse.json({ error: "This page is not available in the public demo." }, { status: 404, headers });
-  if (practiceApi) {
+  if (!isPublicDemoPathAllowed(path)) return NextResponse.json({ error: "This page is not available in the public demo." }, { status: 404, headers });
+  if (isPublicPracticeApi(path)) {
     const retry = admission.retryAfterSeconds();
     if (retry !== null) {
       console.info("Public demo refused a request at the rate limit.");

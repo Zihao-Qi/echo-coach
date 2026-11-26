@@ -6,6 +6,8 @@ import {
 } from "../../domain/interview/practice";
 import type { AttemptRecord } from "../../domain/interview/attempt-record";
 import { SAMPLE_FEEDBACK_NOTICE } from "../../infrastructure/config/public-demo";
+import { getSampleContent } from "../../content/questions/demo-audio";
+import { PolishedAnswer } from "./PolishedAnswer";
 import { FollowUpCard } from "./FollowUpCard";
 import { RetryComparisonPanel } from "./RetryComparisonPanel";
 
@@ -13,6 +15,7 @@ interface Props {
   headingRef: RefObject<HTMLHeadingElement | null>;
   latest: AnswerAttempt;
   displayedQuestion: InterviewQuestion;
+  starterId?: string;
   questionAttempts: AnswerAttempt[];
   previous?: AttemptRecord;
   baselineLoading: boolean;
@@ -45,6 +48,7 @@ export function PracticeFeedback({
   headingRef,
   latest,
   displayedQuestion,
+  starterId,
   questionAttempts,
   previous,
   baselineLoading,
@@ -67,6 +71,8 @@ export function PracticeFeedback({
   ];
   const demo = latest.provenance.mode === "demo",
     behavioral = displayedQuestion.track === "behavioral";
+  const sample = starterId ? getSampleContent(starterId) : undefined;
+  const hasSample = !!sample?.polishedAnswer;
   const e = latest.evaluation,
     usage = latest.provenance.usage,
     concepts = displayedQuestion.rubric.expectedConcepts;
@@ -106,7 +112,7 @@ export function PracticeFeedback({
       )}
       <div
         className={
-          behavioral || !demo
+          behavioral || !demo || hasSample
             ? "grid items-start gap-5 lg:grid-cols-[7fr_5fr]"
             : "grid"
         }
@@ -238,15 +244,27 @@ export function PracticeFeedback({
             </ol>
           </section>
         ) : (
-          !demo && (
-            <details className="panel">
-              <summary className="cursor-pointer font-semibold">
-                Optional suggested answer · try improving yours first
-              </summary>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-7">
-                {e.suggestedAnswer}
-              </p>
-            </details>
+          (!demo || hasSample) && (
+            <div className="min-w-0 space-y-4">
+              {starterId && sample?.polishedAnswer && sample.highlights && (
+                <PolishedAnswer
+                  key={latest.id}
+                  id={starterId}
+                  paragraphs={sample.polishedAnswer}
+                  highlights={sample.highlights}
+                />
+              )}
+              {!demo && (
+                <details className="panel">
+                  <summary className="cursor-pointer font-semibold">
+                    Optional suggested answer · try improving yours first
+                  </summary>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7">
+                    {e.suggestedAnswer}
+                  </p>
+                </details>
+              )}
+            </div>
           )
         )}
       </div>

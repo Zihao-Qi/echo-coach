@@ -26,7 +26,7 @@ async function submit(page: Page, text: string, label = "Get feedback") {
   expect((await response).ok()).toBe(true);
 }
 
-test("typed technical feedback collapses the composer and spans the full width", async ({
+test("typed technical feedback collapses the composer and shows the separate polished sample", async ({
   page,
 }) => {
   await page.goto("/practice?track=swe");
@@ -63,9 +63,11 @@ test("typed technical feedback collapses the composer and spans the full width",
   expect(
     (await card.locator("summary").boundingBox())!.height,
   ).toBeGreaterThanOrEqual(44);
-  expect((await card.boundingBox())!.width).toBe(
-    (await feedback.boundingBox())!.width,
-  );
+  const sample = feedback.getByRole("region", { name: "Sample polished answer", exact: true });
+  await expect(sample).toBeVisible();
+  await expect(sample.getByText("constant time on average", { exact: true })).toHaveJSProperty("tagName", "STRONG");
+  const mainBox = (await card.boundingBox())!;
+  expect((await sample.boundingBox())!.x).toBeGreaterThan(mainBox.x + mainBox.width);
   await edit(page).click();
   await expect(answer(page)).toBeFocused();
   await expect(answer(page)).toHaveValue(draft);

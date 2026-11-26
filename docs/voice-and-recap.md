@@ -1,6 +1,6 @@
 # Voice and recap with sample content
 
-**Status:** Spec reviewed by Gemini 4 Neon High (REVISE, then APPROVE WITH CHANGES; changes applied). Not implemented.
+**Status:** Approved spec. Reviewed text changes and the implementation are on `voice-recap`; the production audio manifest is intentionally empty until the lead generates and listens to the recordings. No deployment.
 
 ## Goal
 
@@ -147,6 +147,16 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
    - the mock interview with Listen.
    
    Gemini 4 Neon High does a visual review against the mockups.
+
+## Audio handoff and local fixtures
+
+- From the `voice-recap` checkout, `npx --no-install tsx scripts/generate-demo-audio.ts` prints the plan without using a key or accessing the network. The reviewed text plans 15 files, 363.6 seconds and about $0.0818. The script uses Kore for questions and Sulafat for polished answers. Only the lead runs the same command with `--execute` for step 4. Check the pronunciation of “idempotency” when listening; use `--only answer:swe-debugging` with `--execute` if that one file needs regeneration.
+- The script writes the hashed `.m4a` assets under `public/audio/questions/` and `public/audio/answers/` and updates `src/content/questions/audio-manifest.json`. Commit the reviewed assets and the manifest together, run the manifest unit test, and rebuild both profiles. Controls, duration labels, the public proxy allowlist and immutable cache headers all use the bundled manifest. No code or runtime setting needs to change when the files are added.
+- To test without buying audio, make a disposable copy of the checkout under the OS temp directory (exclude `.git`, `.next`, `node_modules`, and `.env*`). In the copy, run `npm ci` and `npx --no-install tsx tests/audio/prepare-demo-audio-fixtures.ts`; this uses mocked raw PCM and the same FFmpeg and manifest-writing code, with no provider request. Build and run the default and HTTPS public suites in that copy. Do not copy or commit the fixture files or its manifest back to the worktree. In an empty-manifest checkout, the four playback cases skip with an explicit reason and the other cases still cover the text-only fallback.
+
+## Local verification
+
+Node 22: lint, TypeScript, 100 unit tests, 3 integration tests, and both production builds passed. Chrome passed 62 default-profile cases with the empty manifest (four asset cases explicitly skipped), and all 66 in the disposable fixture build. The public spec passed all six local HTTPS cases both with and without fixtures, using Node-process restarts instead of Docker. The fixture run verified the exact-path allowlist, range requests and caching with real `.m4a` files. Tests saw no recording uploads, provider traffic or marker leaks. All 16 screenshots in `/tmp/echo-lead/vc-shots/` show synthetic answers and use silent AAC fixtures for the audio states. The production recordings, final pronunciation check, and image CI are still pending.
 
 ## Method, review and merge
 

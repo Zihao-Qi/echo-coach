@@ -12,6 +12,7 @@ const primaryButton =
 
 interface VoiceAnswerPanelProps {
   transcriptionAccess: PracticeTranscriptionAccess;
+  browserOnly?: boolean;
   voice: ReturnType<typeof useVoiceRecording>;
   evaluationPending: boolean;
   hasExistingTypedDraft: boolean;
@@ -19,6 +20,7 @@ interface VoiceAnswerPanelProps {
 
 export function VoiceAnswerPanel({
   transcriptionAccess,
+  browserOnly = false,
   voice,
   evaluationPending,
   hasExistingTypedDraft,
@@ -46,7 +48,7 @@ export function VoiceAnswerPanel({
   } = voice;
 
   const isDisabledCapability =
-    !transcriptionAccess.available || transcriptionAccess.mode === "disabled";
+    !browserOnly && (!transcriptionAccess.available || transcriptionAccess.mode === "disabled");
 
   const trimmedTranscriptLength = transcriptText.trim().length;
   const isTranscriptEmpty = trimmedTranscriptLength === 0;
@@ -62,10 +64,14 @@ export function VoiceAnswerPanel({
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-sm font-bold text-ink">Record answer (optional)</h2>
             <span className="rounded-full border border-line bg-card px-2.5 py-0.5 text-xs font-semibold text-ink">
-              {isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
+              {browserOnly ? "Browser only" : isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
             </span>
           </div>
-          {isDisabledCapability ? (
+          {browserOnly ? (
+            <p className="mt-1.5 text-xs leading-5 text-muted">
+              Record yourself to practice speaking. Your audio stays in this browser and is deleted when you stop. This demo doesn&apos;t recognize speech: after you stop, you&apos;ll see a sample transcript you can edit.
+            </p>
+          ) : isDisabledCapability ? (
             <p className="mt-1.5 text-xs leading-5 text-muted">
               {transcriptionAccess.reason ||
                 "Voice transcription is disabled in this configuration. Type your answer directly below."}
@@ -108,7 +114,7 @@ export function VoiceAnswerPanel({
           <div className="flex items-center gap-2.5">
             <span
               aria-hidden="true"
-              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-danger"
+              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-danger motion-reduce:animate-none"
             />
             <p className="text-xs font-semibold text-ink">
               Recording:{" "}
@@ -205,15 +211,15 @@ export function VoiceAnswerPanel({
             htmlFor="voice-transcript-review"
             className="block text-xs font-bold text-ink"
           >
-            Review and edit demo transcript before applying
+            {browserOnly ? "Sample transcript" : "Review and edit demo transcript before applying"}
           </label>
-          <p className="mt-1 text-xs text-muted">
-            This text is a demo fixture, not recognition of your speech. Edit freely before copying
-            it into your answer draft.
+          <p id="voice-transcript-description" className="mt-1 text-xs text-muted">
+            {browserOnly ? "This demo doesn't recognize speech. Edit this sample before using it." : "This text is a demo fixture, not recognition of your speech. Edit freely before copying it into your answer draft."}
           </p>
           <textarea
             ref={transcriptTextareaRef}
             id="voice-transcript-review"
+            aria-describedby="voice-transcript-description"
             value={transcriptText}
             disabled={evaluationPending}
             maxLength={10000}
@@ -243,7 +249,7 @@ export function VoiceAnswerPanel({
               className={primaryButton}
               onClick={applyConfirmedTranscript}
             >
-              Use confirmed transcript
+              {browserOnly ? "Use in answer draft" : "Use confirmed transcript"}
             </button>
             <button
               type="button"
@@ -259,7 +265,7 @@ export function VoiceAnswerPanel({
               className={button}
               onClick={() => discardVoice(true)}
             >
-              Discard transcript
+              {browserOnly ? "Discard" : "Discard transcript"}
             </button>
           </div>
         </div>

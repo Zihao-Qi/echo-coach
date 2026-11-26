@@ -1,5 +1,7 @@
 "use client";
 
+import { getDemoAudio } from "../../content/questions/demo-audio";
+import { AudioPlayer, stopDemoAudio } from "../AudioPlayer";
 import { PracticeHeader } from "../PracticeHeader";
 import { useEffect, useReducer, useRef, useState } from "react";
 import {
@@ -23,7 +25,11 @@ const BTN_DANGER = `${FOCUS_RING} rounded-xl border border-danger-line bg-danger
 const TEXTAREA = "input-field mt-2";
 
 export function MockInterview() {
-  const [round, dispatch] = useReducer(reduceRound, initialRound);
+  const [round, dispatchRound] = useReducer(reduceRound, initialRound);
+  function dispatch(action: Parameters<typeof reduceRound>[1]) {
+    if (action.type !== "draft" && action.type !== "revise") stopDemoAudio();
+    dispatchRound(action);
+  }
   const [selectedTurn, setSelectedTurn] = useState<number | null>(null);
   const [extraHints, setExtraHints] = useState<Record<number, boolean>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -161,7 +167,7 @@ export function MockInterview() {
               <p className="mt-4 text-sm leading-7 text-muted">
                 Work through three mixed interview prompts—behavioral, software
                 engineering, and AI/ML—one turn at a time without hints or
-                coaching between questions.
+                coaching between questions. Self-review only. Nothing is scored.
               </p>
               <p className="mt-4 rounded-xl border border-line bg-pebble px-4 py-3 text-xs leading-6 text-ink">
                 <strong>Page-memory only:</strong> Your typed drafts, answers,
@@ -184,6 +190,7 @@ export function MockInterview() {
               const idx = round.turns.length;
               const q = MOCK_PROMPTS[idx];
               const hasDraft = round.draft.trim().length > 0;
+              const audio = getDemoAudio(q.id, "question");
               return (
                 <section className={CARD}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -201,6 +208,7 @@ export function MockInterview() {
                   >
                     {q.prompt}
                   </h1>
+                  {audio && <AudioPlayer key={audio.path} asset={audio} headingRef={headingRef} />}
                   <div className="mt-6">
                     <label
                       htmlFor="mock-answer-input"

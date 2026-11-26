@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PUBLIC_DEMO_BUILD } from "../../../infrastructure/config/public-demo";
+import { transcriptForStarter } from "../../../content/questions/demo-transcription";
+import { stopDemoAudio } from "../../AudioPlayer";
 import { AUDIO_MAX_SECONDS } from "../../../domain/audio/canonical-wav";
 import type { PracticeTranscriptionAccess } from "../usePracticeAccess";
 import { MAX_ENCODED_RECORDING_BYTES, normalizeRecording } from "./normalize-recording";
@@ -48,6 +51,7 @@ export function formatVoiceSeconds(totalSeconds: number): string {
 export function useVoiceRecording({
   activeQuestionId,
   transcriptionAccess,
+  sampleTranscript,
   getHeaders,
   getCurrentDraft,
   applyDraft,
@@ -55,6 +59,7 @@ export function useVoiceRecording({
 }: {
   activeQuestionId: string;
   transcriptionAccess: PracticeTranscriptionAccess;
+  sampleTranscript?: string;
   getHeaders: () => Promise<Record<string, string>>;
   getCurrentDraft: () => string;
   applyDraft: (value: string) => void;
@@ -189,7 +194,7 @@ export function useVoiceRecording({
     (phase === "error" && (hasRetainedAudio || transcriptText.trim().length > 0));
 
   const startRecording = useCallback(async () => {
-    if (!transcriptionAccess.available || transcriptionAccess.mode === "disabled") {
+    if (PUBLIC_DEMO_BUILD ? !sampleTranscript : !transcriptionAccess.available || transcriptionAccess.mode === "disabled") {
       return;
     }
     if (
@@ -203,12 +208,13 @@ export function useVoiceRecording({
       return;
     }
 
+    stopDemoAudio();
     if (
       typeof navigator === "undefined" ||
       !navigator.mediaDevices ||
       typeof navigator.mediaDevices.getUserMedia !== "function" ||
       typeof MediaRecorder === "undefined" ||
-      typeof OfflineAudioContext === "undefined"
+      (!PUBLIC_DEMO_BUILD && typeof OfflineAudioContext === "undefined")
     ) {
       updatePhase("error");
       setError(
@@ -334,7 +340,7 @@ export function useVoiceRecording({
       track.addEventListener("ended", handleTrackEnded, { once: true });
     }
 
-    recorder.ondataavailable = (event: BlobEvent) => {
+    recorder.ondataavailable = PUBLIC_DEMO_BUILD ? null : (event: BlobEvent) => {
       if (
         generationRef.current !== jobGeneration ||
         recorderFailed ||
@@ -415,6 +421,23 @@ export function useVoiceRecording({
       recorderRef.current = null;
       streamRef.current = null;
 
+      // The public recorder never retains chunks, creates a blob, or contacts transcription.
+      if (PUBLIC_DEMO_BUILD) {
+        if (trackLostBeforeStop || !sampleTranscript) {
+          jobRef.current = null;
+          updatePhase("error");
+          setError("Microphone disconnected during recording. Reconnect or type your answer below.");
+          setStatusAnnouncement("Microphone disconnected.");
+        } else {
+          setTranscriptText(sampleTranscript);
+          updatePhase("review");
+          setStatusAnnouncement("Sample transcript ready to edit. This demo does not recognize speech.");
+          requestAnimationFrame(() => {
+            if (generationRef.current === jobGeneration) transcriptTextareaRef.current?.focus();
+          });
+        }
+        return;
+      }
       if (oversizedAbort) {
         jobRef.current = null;
         updatePhase("error");
@@ -530,7 +553,7 @@ export function useVoiceRecording({
         }
       }
     }, AUDIO_MAX_SECONDS * 1000);
-  }, [clearRecordingTimers, readCurrentPhase, transcriptionAccess.available, transcriptionAccess.mode, updatePhase]);
+  }, [clearRecordingTimers, readCurrentPhase, sampleTranscript, transcriptionAccess.available, transcriptionAccess.mode, updatePhase]);
 
   const stopRecording = useCallback(() => {
     if (phaseRef.current !== "recording") return;
@@ -549,6 +572,7 @@ export function useVoiceRecording({
 
   const sendTranscription = useCallback(
     async (intent: "start" | "recover", forceNewRequestId = false) => {
+      if (PUBLIC_DEMO_BUILD) return;
       const currentJob = jobRef.current;
       if (
         !currentJob ||
@@ -640,7 +664,7 @@ export function useVoiceRecording({
         }
 
         if (response.ok && payload.transcription && typeof payload.transcription.text === "string") {
-          const text = payload.transcription.text.slice(0, 10000);
+          const text = transcriptForStarter(payload.transcription.text, payload.transcription.mode, sampleTranscript).slice(0, 10000);
           setTranscriptText(text);
           setError(null);
           setErrorRecovery("none");
@@ -740,7 +764,7 @@ export function useVoiceRecording({
         }
       }
     },
-    [getHeaders, updatePhase],
+    [getHeaders, sampleTranscript, updatePhase],
   );
 
   const startTranscription = useCallback(() => {
@@ -784,14 +808,14 @@ export function useVoiceRecording({
       typeof window !== "undefined"
     ) {
       const confirmed = window.confirm(
-        "Replace your current typed answer draft with this confirmed transcript?",
+        PUBLIC_DEMO_BUILD ? "Replace your current typed answer draft with this sample transcript?" : "Replace your current typed answer draft with this confirmed transcript?",
       );
       if (!confirmed) return;
     }
 
     const nextText = transcriptText.slice(0, 10000);
     applyDraft(nextText);
-    invalidateAndRelease("Applied confirmed transcript to your answer draft.");
+    invalidateAndRelease(PUBLIC_DEMO_BUILD ? "Applied sample transcript to your answer draft." : "Applied confirmed transcript to your answer draft.");
     requestAnimationFrame(() => {
       focusAnswerTextarea();
     });

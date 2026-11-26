@@ -16,14 +16,8 @@ export function PracticeHeader({
   const links = [
     ["home", "/", "Home"],
     ["practice", "/practice", "Practice"],
-    ...(!PUBLIC_DEMO_BUILD
-      ? [
-          ["mock", "/mock-interview", "Mock interview"],
-          ...(page !== "mock"
-            ? [["legacy", "/legacy", "Original voice demo"]]
-            : []),
-        ]
-      : []),
+    ["mock", "/mock-interview", "Mock interview"],
+    ...(!PUBLIC_DEMO_BUILD && page !== "mock" ? [["legacy", "/legacy", "Original voice demo"]] : []),
   ];
   const guard = {
     "aria-disabled": disabled,

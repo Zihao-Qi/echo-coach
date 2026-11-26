@@ -77,7 +77,7 @@ Feedback stays inline on `/practice`.
 
 **Compare your attempts** (a retry only). Baseline and displayed attempt side by side (stacked below `sm`), labeled with their attempt numbers or "Linked earlier answer", keeping today's baseline loading, error and "Retry loading baseline" states. Then: real feedback shows the model's summary, the before/after changes and its disclaimer line, then "Focus for the next retry"; demo feedback shows only the next focus. A retry without a comparison shows "No model comparison is available for this retry. An unchanged answer does not demonstrate improvement. Compare the submitted answers above." The "Try another question" shortcut follows, unchanged.
 
-**Optional follow-up.** One card: label, the question, "Answer follow-up" and "Retry original answer" (labels unchanged). Real feedback keeps the rationale, focus label, optional concepts, the AI-generated disclaimer and the unsent-draft notice, condensed below the question. Demo feedback shows the question and buttons only.
+**Optional follow-up.** One card: the label "Optional follow-up" (was "Go one level deeper"), the question, "Answer follow-up" and "Retry original answer" (labels unchanged). Real feedback keeps the rationale, focus label, optional concepts, the AI-generated disclaimer and the unsent-draft notice, condensed below the question. Demo feedback shows the question and buttons only.
 
 **Removed:** the "Illustrative demo feedback" badge, the heading "Your next step, not a final score.", "Edit your answer above and submit a retry. Earlier attempts remain unchanged.", and the separate "Your attempts" section.
 

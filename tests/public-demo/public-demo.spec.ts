@@ -24,12 +24,12 @@ async function openPractice(page: Page) {
   return external;
 }
 
-async function submit(page: Page, button: RegExp, status = 200) {
+async function submit(page: Page, button: RegExp, status = 200, json = true) {
   const response = page.waitForResponse((response) => url.test(response.url()) && response.request().method() === "POST");
   await page.getByRole("button", { name: button }).click();
   const result = await response;
   expect(result.status()).toBe(status);
-  return result.json();
+  return json ? result.json() : undefined;
 }
 
 async function restart(page: Page) {
@@ -70,6 +70,9 @@ test("two HTTPS sessions stay isolated, disabled routes and cross-origin writes 
   appendFileSync(process.env.PUBLIC_DEMO_LOG_MARKERS!, originalCookie + "\n");
   const other = await browser.newContext({ baseURL: base, ignoreHTTPSErrors: true });
   try {
+    const crossSiteAccess = await other.request.get("/api/practice/access", { headers: { "sec-fetch-site": "cross-site" } });
+    expect(crossSiteAccess.status()).toBe(200);
+    expect(crossSiteAccess.headers()["set-cookie"]).toBeUndefined();
     const access = await other.request.get("/api/practice/access");
     expect(access.ok()).toBe(true);
     const history = await other.request.get("/api/practice/attempts");
@@ -78,7 +81,7 @@ test("two HTTPS sessions stay isolated, disabled routes and cross-origin writes 
     expect((await history.json()).records).toEqual([]);
     expect((await other.request.get(`/api/practice/attempts/${first.attempt.id}`)).status()).toBe(404);
   } finally { await other.close(); }
-  for (const path of ["/legacy", "/session/fictional", "/session/fictional/recap", "/api/history", "/api/auth/session", "/api/session", "/api/session/speak", "/api/practice/transcriptions"]) {
+  for (const path of ["/api/practice/Access", "/legacy", "/session/fictional", "/session/fictional/recap", "/api/history", "/api/auth/session", "/api/session", "/api/session/speak", "/api/practice/transcriptions"]) {
     expect((await page.request.get(path)).status(), path).toBe(404);
   }
   expect((await page.request.post("/api/practice/transcriptions", { data: "not audio" })).status()).toBe(404);
@@ -135,8 +138,20 @@ test("a single entry-point limit is shared across sessions and endpoints and pre
   }
   expect(limit?.status()).toBe(429);
   expect(Number(limit?.headers()["retry-after"])).toBeGreaterThan(0);
+  expect((await page.request.get("/api/practice/transcriptions")).status()).toBe(404);
   expect((await page.request.get("/api/practice/access", { headers: { cookie: "", "x-forwarded-for": "198.51.100.1" } })).status()).toBe(429);
   await submit(page, /^Get feedback$/, 429);
-  await expect(page.getByRole("alert").filter({ hasText: "The demo is busy" }).first()).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "The demo is busy" })).toBeVisible();
   await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(draft);
+
+  // A hosting layer may refuse the request before the app can return JSON.
+  const historyLoads: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/practice/attempts") historyLoads.push("attempt list");
+  });
+  await page.route(url, (route) => route.fulfill({ status: 503, contentType: "text/plain", body: "Service unavailable" }));
+  await submit(page, /^Get feedback$/, 503, false);
+  await expect(page.getByRole("alert").filter({ hasText: "Feedback is temporarily unavailable" })).toBeVisible();
+  await expect(page.getByLabel("Your answer", { exact: true })).toHaveValue(draft);
+  expect(historyLoads).toEqual([]);
 });

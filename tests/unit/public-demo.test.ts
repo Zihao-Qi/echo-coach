@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { submitPracticeAttempt } from "../../src/application/workflows/submit-practice-attempt";
+import { starterQuestions } from "../../src/content/questions/starter-bank";
+import { DemoPracticeEvaluator } from "../../src/infrastructure/ai/demo/practice-evaluator";
 import type { AttemptRecord } from "../../src/domain/interview/attempt-record";
 import { validatePublicDemo } from "../../src/infrastructure/config/public-demo-runtime";
 import { PublicDemoAdmission } from "../../src/infrastructure/http/public-demo-admission";
@@ -18,6 +21,13 @@ test("public demo requires matching build and runtime settings and no provider c
   assert.doesNotThrow(() => validatePublicDemo(env, true));
   assert.doesNotThrow(() => validatePublicDemo({}, false));
   assert.throws(() => validatePublicDemo(env, false));
+  for (const flag of ["false", ""]) {
+    assert.doesNotThrow(() => validatePublicDemo({ ECHO_PUBLIC_DEMO: flag }, false));
+    assert.throws(() => validatePublicDemo({ ...env, ECHO_PUBLIC_DEMO: flag }, true));
+  }
+  for (const demoBuild of [false, true]) {
+    assert.throws(() => validatePublicDemo({ ...env, ECHO_PUBLIC_DEMO: "1" }, demoBuild));
+  }
   for (const name of Object.keys(env)) assert.throws(() => validatePublicDemo({ ...env, [name]: undefined }, true), name);
   for (const name of ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET", "AUTH_SECRET"]) {
     assert.throws(() => validatePublicDemo({ ...env, [name]: "synthetic-value" }, true), (e: unknown) => e instanceof Error && !e.message.includes("synthetic-value"));
@@ -77,4 +87,39 @@ test("attempt limits leave active sessions intact and expired storage and counte
   assert.equal((await repo.claim("0", "fresh", 1)).kind, "claimed");
   await repo.create("new", record("fresh"));
   assert.equal(await repo.get("0", "0"), null);
+});
+
+test("only the current lease can finish a public demo attempt", async () => {
+  let now = 0;
+  const repo = new MemoryAttemptRepository(true, () => now);
+  await repo.create("visitor", record("a"));
+  const first = await repo.claim("visitor", "a", 100);
+  assert(first.kind === "claimed");
+  now = MEMORY_EVALUATION_LEASE_MS;
+  const current = await repo.claim("visitor", "a", 100);
+  assert(current.kind === "claimed");
+  assert.notEqual(first.leaseId, current.leaseId);
+  const evaluator = new DemoPracticeEvaluator();
+  const result = {
+    evaluation: await evaluator.evaluate(starterQuestions[0], record("a").answer),
+    provenance: { mode: evaluator.mode, model: evaluator.model, promptVersion: "test", rubricVersion: "1" },
+  };
+  await assert.rejects(repo.finish("visitor", "a", first.leaseId, result), /Evaluation lease expired/);
+  assert.equal((await repo.get("visitor", "a"))?.status, "evaluating");
+  await repo.finish("visitor", "a", current.leaseId, result);
+  const saved = await repo.get("visitor", "a");
+  assert.equal(saved?.status, "completed");
+  assert.equal(saved?.leaseId, undefined);
+  assert.deepEqual(saved?.evaluation, result.evaluation);
+  assert.deepEqual(await repo.claim("visitor", "a", 100), { kind: "completed" });
+});
+
+test("a write rejected for invalid retry lineage allocates no demo session", async () => {
+  const repo = new MemoryAttemptRepository(true, () => 0);
+  const question = starterQuestions[0];
+  await assert.rejects(submitPracticeAttempt("rejected", question, {
+    questionId: question.id, submissionId: "new", previousAttemptId: "nonexistent", answer: record("a").answer,
+  }, repo, new DemoPracticeEvaluator(), 100), /Previous attempt does not belong/);
+  for (let i = 0; i < 256; i++) await repo.create(`valid-${i}`, record("a"));
+  await assert.rejects(repo.create("overflow", record("a")), isCapacity("shared"));
 });

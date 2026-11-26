@@ -380,7 +380,14 @@ export function usePracticeSession({
         body: JSON.stringify(payloadBody),
         signal: controller.signal,
       });
-      const payload = (await response.json()) as { attempt?: AnswerAttempt; error?: string; code?: string };
+      const payload = ((await response.json().catch(() => ({}))) ?? {}) as { attempt?: AnswerAttempt; error?: string; code?: string };
+      const unavailable = response.status === 429 || response.status >= 500;
+      const failureMessage = typeof payload.error === "string" && payload.error ? payload.error :
+        unavailable ? "Feedback is temporarily unavailable. Your draft is still here; try again shortly." : "Evaluation failed.";
+      if (response.status === 429 || response.status === 503) {
+        if (!controller.signal.aborted) setError(failureMessage);
+        return;
+      }
       if (PUBLIC_DEMO_BUILD && (response.status === 401 || payload.code === "demo-history-reset")) {
         if (response.status === 401) {
           const fresh = await fetch("/api/practice/access", { signal: controller.signal });
@@ -395,7 +402,7 @@ export function usePracticeSession({
         if (!controller.signal.aborted) setError(message);
         return;
       }
-      if (!response.ok || !payload.attempt) throw new Error(payload.error || "Evaluation failed.");
+      if (!response.ok || !payload.attempt) throw new Error(failureMessage);
       history.upsert({ ...payload.attempt, status: "completed" });
       setSelectedAttempt(payload.attempt);
       delete submissionCacheRef.current[activeQuestionId];

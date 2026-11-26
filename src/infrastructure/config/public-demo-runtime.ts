@@ -1,7 +1,11 @@
 import { PUBLIC_DEMO_BUILD } from "./public-demo";
 
+export function publicDemoRequested(env: Record<string, string | undefined> = process.env) {
+  return !!env.ECHO_PUBLIC_DEMO && env.ECHO_PUBLIC_DEMO !== "false";
+}
+
 export function validatePublicDemo(env: Record<string, string | undefined> = process.env, demoBuild = PUBLIC_DEMO_BUILD) {
-  if (!demoBuild && env.ECHO_PUBLIC_DEMO === undefined) return;
+  if (!demoBuild && !publicDemoRequested(env)) return;
   if (!demoBuild || env.ECHO_PUBLIC_DEMO !== "true" || env.NODE_ENV !== "production") {
     throw new Error("Public demo requires matching build and production runtime flags.");
   }

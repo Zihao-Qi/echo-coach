@@ -81,6 +81,14 @@ jobs:
           image=$(docker image inspect --format '{{.Id}}' echo-coach:ci)
           node_version=$(docker run --rm "$image" node --version)
           [[ "$node_version" == v22.* ]]
+          rc=0
+          timeout 15s docker run --rm --network none -e ECHO_PUBLIC_DEMO=true "$image" > "$RUNNER_TEMP/default-invalid" 2>&1 || rc=$?
+          printf 'Default-image demo opt-in exit: %s (expected 1)\n' "$rc"
+          tail -n +1 "$RUNNER_TEMP/default-invalid"
+          test "$rc" -eq 1 || { echo 'Default image did not reject the demo runtime flag.' >&2; exit 1; }
+          grep -Fq 'Public demo requires matching build and production runtime flags.' "$RUNNER_TEMP/default-invalid" || {
+            echo 'Default image did not print the expected build/runtime mismatch message.' >&2; exit 1;
+          }
           docker run -d --name echo-demo -p 127.0.0.1:8080:8080 \
             -e HOSTNAME=0.0.0.0 -e AUTH_URL=http://127.0.0.1:8080 \
             -e USE_MOCK=true -e PRACTICE_AUTH_MODE=demo -e PRACTICE_STORAGE=memory \

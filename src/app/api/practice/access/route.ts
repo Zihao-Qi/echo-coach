@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const localGemini = !mockEvaluation && localGeminiRequested() && process.env.NODE_ENV === "development";
     if (isDemoMode()) {
       const response = practiceJson({ mode: "demo", storage, mockEvaluation, localGemini, transcription });
-      if (!readDemoOwner(request)) response.cookies.set(DEMO_COOKIE, newDemoSession(), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+      if ((!PUBLIC_DEMO_BUILD || request.headers.get("sec-fetch-site") !== "cross-site") && !readDemoOwner(request)) response.cookies.set(DEMO_COOKIE, newDemoSession(), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
       return response;
     }
     try {

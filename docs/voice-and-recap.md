@@ -1,6 +1,6 @@
 # Voice and recap with sample content
 
-**Status:** Spec revised after review. Not implemented.
+**Status:** Spec reviewed by Gemini 4 Neon High (REVISE, then APPROVE WITH CHANGES; changes applied). Not implemented.
 
 ## Goal
 
@@ -37,14 +37,14 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
 - All existing guards stay: recording and an unapplied transcript lock navigation and submit, with the existing discard confirmation; stale-Stop, late-permission and track-ended handling are kept.
 - Runtime config is unchanged: the public demo still requires `PRACTICE_TRANSCRIPTION_MODE=disabled` and `ALLOW_LOCAL_TRANSCRIPTION=false`, and `/api/practice/transcriptions` stays blocked (proxy 404). The browser-only mode is selected by `PUBLIC_DEMO_BUILD`, not by the transcription mode.
 
-**Default profile:** the existing panel, server demo route and privacy copy (WAV goes to this app for validation) stay as they are, and the route stays question-agnostic. After the demo transcript returns, the client shows the active starter question's sample transcript in its place (the generic fixture for follow-ups and earlier questions). Its button keeps its name "Use confirmed transcript".
+**Default profile:** the existing panel, server demo route and privacy copy (WAV goes to this app for validation) stay as they are, and the route stays question-agnostic. After the demo transcript returns, the client shows the active starter question's sample transcript in its place, but only when the response mode is `demo` and its text equals the server's standard demo fixture; empty, short or non-demo responses are shown as returned (follow-ups and earlier questions keep the fixture). Its button keeps its name "Use confirmed transcript".
 
 ### 3. Sample polished answer (technical starter questions)
 
 - Each of the six software engineering and AI/ML starter questions has a prewritten sample polished answer (about 90–140 words, two or three short paragraphs) and its recording.
 - It appears in the feedback's right column as the dark card in `feedback.html`: heading "Sample polished answer", the line "A prewritten example for this question, not a rewrite of your answer.", a play control (bright marigold on dark; accessible names "Play sample polished answer" / "Pause sample polished answer"), a read-only progress bar and time, the caption "AI-generated voice", and the text. Two or three key phrases are emphasized in bright marigold **and** semibold, so emphasis doesn't rely on color alone and survives forced-colors mode.
 - With demo feedback the feedback becomes two columns when this card is present. With real feedback it sits above the model's suggested answer in the same right column.
-- If the audio fails, only the play row is replaced by "Audio isn't available right now."; the text stays.
+- If the audio fails, only the play row is replaced by "Audio isn't available right now." and focus moves to the card's heading; the text stays.
 - Never shown for behavioral questions (they keep the structure outline), follow-ups or earlier questions; those keep today's layout.
 
 ### 4. Session recap
@@ -64,7 +64,7 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
 
 ## Content
 
-- **Where it lives:** a separate module, `src/content/questions/sample-content.ts`, keyed by starter question ID, holding `sampleTranscript` (all nine), `polishedAnswer` (paragraphs) and `highlights` (exact phrases) for the six technical questions. It is **not** added to `InterviewQuestion`, so saved question snapshots and follow-ups are unchanged. The UI looks content up by ID only for starter questions.
+- **Where it lives:** a separate module, `src/content/questions/sample-content.ts`, keyed by starter question ID, holding `sampleTranscript` (all nine), `polishedAnswer` (an array of paragraphs; its canonical text is `paragraphs.join("\n\n")`, used for speech and hashing) and `highlights` (exact phrases) for the six technical questions. It is **not** added to `InterviewQuestion`, so saved question snapshots and follow-ups are unchanged. The UI looks content up by ID only for starter questions.
 - **Sample transcripts** (40–80 words): plausible first-draft spoken answers, clearly fictional, with room for improvement.
 - **Polished answers:** accurate, concise answers a strong new graduate could give, consistent with the question's rubric, with no claims of personal experience. Decorative quotation marks are added by the UI, not stored or spoken.
 - **Order of review, before any paid call:** GPT drafts the texts; the lead reviews them for accuracy; Gemini 4 Neon High reviews the texts on their own; only then is audio generated. If a later review changes a text, only that file is regenerated.
@@ -73,14 +73,14 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
 
 - **Model and cost:** `gemini-3.8-flash-tts` through the Gemini API. Its paid standard rate is $9 per million audio tokens at 25 tokens per second, equal to $0.00225 per 10 seconds, through 2026-12-31 ([Gemini API pricing](https://aistudio.google.com/docs/pricing), checked 2026-11-26). Planned audio is about 9 × 8 s plus 6 × 45 s, roughly 6 minutes, so about **$0.08**. The owner's approved budget is **$1**. Two prebuilt voices from the documented list (one for questions, a calm one for polished answers), recorded in the manifest.
 - **Script** `scripts/generate-demo-audio.ts`, never referenced by `package.json` scripts, CI, the build or `src/`:
-  - Without `--execute` it prints the plan (files, characters, estimated seconds at 2.5 words per second, estimated cost) and makes no network request.
+  - Without `--execute` it prints the plan (files, characters, estimated seconds at 2.5 words per second, estimated cost) and makes no network request. It refuses to run at all if the planned audio exceeds 15 minutes.
   - With `--execute` it refuses when `CI` is set, `ECHO_PUBLIC_DEMO=true`, `GEMINI_API_KEY` is missing, or `ffmpeg` is unavailable; it sends the key in the `x-goog-api-key` header and never logs headers or URLs.
   - Caps: at most 30 requests per run including retries (SDK retries off, a 60-second timeout per request); it stops when cumulative **generated** audio passes 15 minutes or the estimated cost passes $0.50.
-  - It skips files whose text hash already matches the manifest; `--only <id>` regenerates one item.
+  - It skips items whose text hash already matches the manifest; `--only question:<id>` or `--only answer:<id>` regenerates one item. A regenerated item's previous file is deleted.
   - It checks the returned audio is 16-bit mono PCM and its sample rate before converting it with `ffmpeg` to mono AAC at 64 kbps.
-- **Output:** `public/audio/questions/<id>.<hash8>.m4a` and `public/audio/answers/<id>.<hash8>.m4a`, where `hash8` is the first 8 hex characters of the text's SHA-256, and `src/content/questions/audio-manifest.json` with, per file: ID, kind, path, SHA-256 of the exact UTF-8 text, SHA-256 and size of the file, duration, model and voice. The manifest is imported at build time; the browser never fetches it. Expected total under 4 MB.
+- **Output:** `public/audio/questions/<id>.<hash8>.m4a` and `public/audio/answers/<id>.<hash8>.m4a`, where `hash8` is the first 8 hex characters of the **audio file's** SHA-256 (so any regeneration changes the URL), and `src/content/questions/audio-manifest.json` with, per file: ID, kind, path, SHA-256 of the exact UTF-8 text, SHA-256 and size of the file, duration, model and voice. The manifest is imported at build time; the browser never fetches it. Expected total under 4 MB.
 - **Run and check:** the lead runs it once locally with the existing private key (not printed), listens to every file, regenerates misreads with `--only`, and records the request count and estimated cost here.
-- **Caching:** because each file name contains its text hash, `/audio/*` responses get `Cache-Control: public, max-age=31536000, immutable` (via `next.config.ts` headers).
+- **Caching:** because each file name contains its file hash, successful responses for those hashed `.m4a` paths get `Cache-Control: public, max-age=31536000, immutable` (via a `next.config.ts` header rule scoped to the hashed-file pattern). Unknown audio paths still 404 with `private, no-store`.
 
 ## Boundaries
 
@@ -96,7 +96,7 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
 
 ## Accessibility
 
-- Players are buttons with the names above, at least 44 px; the progress bar is `role="progressbar"` with `aria-valuetext` like "0:06 of 0:18", not live-announced.
+- Players are buttons with the names above, at least 44 px; the progress bar is `role="progressbar"` with an `aria-label`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow` and `aria-valuetext` like "0:06 of 0:18", not live-announced.
 - Recorder focus order and announcements as described in section 2; the sample transcript box has a `<label>` and is described by its notice.
 - Recap: one `<h1>`, an `<h2>` per question, `<h3>` for its parts; Session recap and Back to practice are buttons; the mock-interview action is a link.
 - All new colors use the tokens in `NOTES.md`.
@@ -108,9 +108,9 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
    - every starter question has a sample transcript and question audio;
    - every technical starter has a polished answer whose highlights each appear verbatim exactly once;
    - behavioral starters have none;
-   - manifest text hashes match the current texts, and file hashes and sizes match the files on disk;
+   - manifest text hashes match the current texts, file hashes and sizes match the files on disk, and `public/audio/` holds only the files in the manifest;
    - the proxy allows exactly the manifest's audio paths and rejects others (nested, `..`, encoded and unknown names);
-   - the script in plan mode makes no network request and refuses `--execute` under each guard;
+   - the script in plan mode makes no network request, refuses `--execute` under each guard, and `--only` takes `question:` or `answer:`;
    - the caps stop it (with a mocked client).
 3. **Playwright, default and public:**
    - Listen plays, pauses, resets, stops on every listed event, and only one sound plays at a time;
@@ -136,7 +136,7 @@ Bring back the parts of the original prototype that visitors noticed most (a spo
 8. **Public-demo CI image job:**
    - `/mock-interview` loads with no `/api/*` or external requests (audio allowed);
    - audio files load, including a range request;
-   - unknown audio paths 404;
+   - unknown audio paths 404 without the long-lived cache header, and hashed files carry it;
    - `/api/practice/transcriptions` and `/legacy` 404;
    - zero outbound calls; no visitor audio in any request;
    - the sample-feedback notice still appears once.

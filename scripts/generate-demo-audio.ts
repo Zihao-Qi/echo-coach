@@ -381,7 +381,8 @@ async function main(args: string[]) {
     generate: async (job, abortSignal) => {
       const response = await client.models.generateContent({
         model: MODEL,
-        contents: `Read the text below verbatim in clear, natural English. Do not introduce it or add words.\n\n${job.text}`,
+        // Text only: TTS models may speak any instruction included in the prompt.
+        contents: job.text,
         config: {
           abortSignal,
           responseModalities: [Modality.AUDIO],

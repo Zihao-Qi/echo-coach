@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isPublicDemoPathAllowed, isPublicPracticeApi } from "./infrastructure/http/public-demo-paths";
+import { isPublicDemoPage, isPublicDemoPathAllowed, isPublicPracticeApi } from "./infrastructure/http/public-demo-paths";
 import { PUBLIC_DEMO_BUILD } from "./infrastructure/config/public-demo";
 import { publicDemoRequested, validatePublicDemo } from "./infrastructure/config/public-demo-runtime";
 import { PublicDemoAdmission } from "./infrastructure/http/public-demo-admission";
@@ -7,7 +7,51 @@ import { PublicDemoAdmission } from "./infrastructure/http/public-demo-admission
 // Kept in the proxy runtime only: no sharing state with React or route handlers.
 const admission = new PublicDemoAdmission();
 
-function publicDemoProxy(path: string) {
+const PERMISSIONS_POLICY = "microphone=(self), camera=(), geolocation=()";
+const REFERRER_POLICY = "strict-origin-when-cross-origin";
+
+function requestArrivedOverHttps(request: NextRequest) {
+  const forwarded = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  return forwarded === "https" || request.nextUrl.protocol === "https:";
+}
+
+function contentSecurityPolicy(nonce: string, https: boolean) {
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `style-src 'self' 'nonce-${nonce}'`,
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    "connect-src 'self' https://generativelanguage.googleapis.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "frame-src 'none'",
+  ];
+  if (https) directives.push("upgrade-insecure-requests");
+  return directives.join("; ");
+}
+
+// No script-src fallback: a page without its request cannot get a nonce.
+function securePublicPage(request: NextRequest | undefined) {
+  if (!request) throw new Error("A public demo page needs the request so its nonce can be applied.");
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const policy = contentSecurityPolicy(nonce, requestArrivedOverHttps(request));
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", policy);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", policy);
+  response.headers.set("Permissions-Policy", PERMISSIONS_POLICY);
+  response.headers.set("Referrer-Policy", REFERRER_POLICY);
+  return response;
+}
+
+function publicDemoProxy(request: NextRequest | undefined, path: string) {
   const headers = { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" };
   try { validatePublicDemo(); }
   catch { return NextResponse.json({ error: "Public demo unavailable." }, { status: 503, headers }); }
@@ -21,6 +65,7 @@ function publicDemoProxy(path: string) {
       });
     }
   }
+  if (isPublicDemoPage(path)) return securePublicPage(request);
   return NextResponse.next();
 }
 
@@ -28,7 +73,8 @@ function publicDemoProxy(path: string) {
 // but prevent accidentally exposing real history or paid generation in production.
 export function proxy(request?: NextRequest) {
   const path = request?.nextUrl.pathname ?? "/api/session";
-  if (PUBLIC_DEMO_BUILD || publicDemoRequested()) return publicDemoProxy(path);
+  // No matcher: skipping /api or prefetch here would bypass the allowlist and the rate limiter.
+  if (PUBLIC_DEMO_BUILD || publicDemoRequested()) return publicDemoProxy(request, path);
   if (path !== "/api/history" && path !== "/api/session" && !path.startsWith("/api/session/")) return NextResponse.next();
   const configured = process.env.NEXT_PUBLIC_USE_MOCK ?? process.env.USE_MOCK;
   const legacyMock = configured === "true" || (configured !== "false" && process.env.NODE_ENV !== "production");

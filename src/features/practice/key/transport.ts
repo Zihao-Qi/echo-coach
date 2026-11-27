@@ -51,7 +51,7 @@ export function generate(body: object, signal: AbortSignal, ms = 45_000, model: 
 export async function transcribe(bytes: Uint8Array, signal: AbortSignal) {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  const result = await generate({ contents: [{ role: "user", parts: [{ text: "Transcribe only the verbatim words. No preamble, timestamps or formatting. Return empty text if there is no speech." }, { inlineData: { mimeType: "audio/wav", data: btoa(binary) } }] }], generationConfig: { thinkingConfig: { thinkingLevel: "MINIMAL" }, maxOutputTokens: 2048 } }, signal, 60_000);
+  const result = await generate({ contents: [{ role: "user", parts: [{ text: "Transcribe only the verbatim words. No preamble, timestamps or formatting. Return empty text if there is no speech." }, { inlineData: { mimeType: "audio/wav", data: btoa(binary) } }] }], generationConfig: { thinkingConfig: { thinkingLevel: "LOW" }, maxOutputTokens: 2048 } }, signal, 60_000);
   return responseText(result, true).slice(0, 10_000);
 }
 export async function speak(text: string, signal: AbortSignal) {

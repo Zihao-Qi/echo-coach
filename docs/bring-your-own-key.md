@@ -226,7 +226,7 @@ They also assert no hydration warnings, no request with audio, and no request to
 - **Recording:** the recorder works as in the default profile. The browser records and converts to the canonical WAV with the existing `normalize-recording`, keeping the 2-minute limit (at most about 3.8 MB of WAV, well under Gemini's inline limit).
 - **Transcription request:** on Stop, the browser sends the audio straight to Gemini: `gemini-3.8-flash`, inline audio, a 60-second timeout and no retries.
   - Base64 encoding is done in chunks.
-  - The settings are thinking minimal and at most 2,048 output tokens.
+  - The settings are `thinkingLevel: "LOW"` and at most 2,048 output tokens. In the post-merge Chrome smoke test, Gemini 3.8 Flash rejected `MINIMAL` with HTTP 400 `INVALID_ARGUMENT`. Changing only the setting to `LOW` in a one-off request returned the expected words from the same synthetic voice clip. Use `LOW` on the first request and any visitor-initiated retry, with no automatic retry or fallback.
   - The instruction asks for the verbatim words only: no preamble, timestamps or formatting, and an empty result if there is no speech.
 - **Result:** the editable transcript appears. **Use in answer draft** works as today; nothing is evaluated automatically.
 - **Failures:** a failed transcription keeps the WAV in page memory so the visitor can choose **Try transcription again** without re-recording. The WAV is cleared as soon as transcription succeeds or the visitor discards it.
@@ -274,7 +274,7 @@ Raw error text from Google is never shown or logged. **Remove key** is offered o
   - zero requests to the server's practice API.
 - **Errors:** 400, both 403 kinds, 429, 5xx, a blocked response and malformed output mid-session, each keeping the draft.
 - **TTS:** PCM and WAV fakes; an invalid format with Try again; a cache hit without a second request; one sound at a time alongside the question audio; TTS quota errors that keep feedback working.
-- **Transcription:** a fake microphone and a fake response; failure, then Try again without re-recording.
+- **Transcription:** a fake microphone and a fake response; failure, then Try again without re-recording. Assert both requests use `LOW` and the 2,048-token cap, resend the same WAV only when Try transcription again is clicked, and never send audio or a key to Echo Coach.
 - **Mode switching:** while on a follow-up; while recording (disabled); with an open recap; with drafts kept.
 - **Remember:**
   - a reload with and without Remember;
@@ -284,6 +284,8 @@ Raw error text from Google is never shown or logged. **Remove key** is offered o
 - **CSP:** zero violations throughout, including `blob:` playback.
 
 **Public-demo suite (HTTPS):** sample mode is unchanged, including no outbound requests from the server. One key-mode run with routed fakes confirms the only external host contacted is `generativelanguage.googleapis.com`, and the server's logs contain no sentinel key.
+
+**Transcription compatibility follow-up:** Only change the thinking level of the public key-mode transcription request and its test. Keep the model, output cap, timeout, WAV handling, paid-request policy, and server/default/no-key modes unchanged. Before releasing publicly, verify the built app over HTTPS in Chrome with one synthetic voice recording and a configured key, without rewriting the request. Check that Google returns a successful response, the expected words appear in the editable transcript, and no audio or key goes to the app server. This check does not replace the separate no-key Chrome microphone check or authorize any deployment.
 
 **Manual:** the owner tries key mode on the private preview with his own key (a few cents), including Play and one transcription. Separately, he tries browser speech recognition in Chrome without a key.
 

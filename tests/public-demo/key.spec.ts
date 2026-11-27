@@ -291,11 +291,17 @@ test("recording sends one WAV to Google and a retry reuses it without another re
   await expect(button(page, "Remove key")).toBeDisabled();
   await page.waitForTimeout(350);
   await button(page, "Stop recording").click(); await expect(button(page, "Try transcription again")).toBeVisible();
+  expect(seen.requests.filter(r => r.method === "POST")).toHaveLength(1);
   seen.setOverride(); await button(page, "Try transcription again").click();
   await expect(page.getByRole("textbox", { name: "Your transcript" })).toHaveValue(draft);
   await button(page, "Use in answer draft").click(); await expect(answer(page)).toHaveValue(draft);
-  const audio = seen.requests.filter(r => r.method === "POST"); expect(audio).toHaveLength(2); expect(audio[0].body).toEqual(audio[1].body);
-  expect(audio[0].body).toMatchObject({ generationConfig: { maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: "MINIMAL" } } });
+  const audio = seen.requests.filter(r => r.method === "POST");
+  expect(audio).toHaveLength(2);
+  for (const request of audio) {
+    expect(request.path).toBe("/v1beta/models/gemini-3.8-flash:generateContent");
+    expect(request.body).toMatchObject({ generationConfig: { maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: "LOW" } } });
+  }
+  expect(audio[0].body).toEqual(audio[1].body);
   expect(seen.app.slice(checkpoint)).toEqual([]); await seen.clean();
 });
 

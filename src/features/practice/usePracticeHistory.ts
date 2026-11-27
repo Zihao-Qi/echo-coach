@@ -18,6 +18,12 @@ function merge(current: AttemptRecord[], fresh: AttemptRecord[]) {
 
 export function usePracticeHistory(headers: () => Promise<Record<string, string>>, onEmpty: () => void) {
   const [page, setPage] = useState<LoadedHistory>({ records: [], cursor: null, loadedOlder: false });
+  // All writes update this snapshot before publishing to React, even when renders are batched.
+  const currentPage = useRef(page);
+  const publish = useCallback((next: LoadedHistory) => {
+    currentPage.current = next;
+    setPage(next);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const revision = useRef(0);
@@ -32,21 +38,22 @@ export function usePracticeHistory(headers: () => Promise<Record<string, string>
       if (!response.ok) throw new Error(payload.error || "Could not load saved attempts.");
       const records: AttemptRecord[] = payload.records;
       const cursor: AttemptCursor | null = payload.cursor;
-      if (!after && !records.length) onEmpty();
-      setPage(previous => {
-        if (after) return { records: merge(previous.records, records), cursor, loadedOlder: true };
-        if (preserveOlder && previous.loadedOlder && records.length && cursor) {
-          // Keep the deepest cursor when pages overlap; otherwise load the intervening page next.
-          const overlap = records.some(record => previous.records.some(old => old.id === record.id));
-          return { records: merge(previous.records, records), cursor: overlap ? previous.cursor : cursor, loadedOlder: true };
-        }
-        return { records, cursor, loadedOlder: false };
-      });
+      const previous = currentPage.current;
+      if (after) {
+        publish({ records: merge(previous.records, records), cursor, loadedOlder: true });
+      } else if (preserveOlder && previous.loadedOlder && records.length && cursor) {
+        // An upserted record near the head doesn't prove the fresh page reaches the loaded range.
+        const connected = previous.records.some(record => record.id === cursor.id);
+        publish({ records: merge(previous.records, records), cursor: connected ? previous.cursor : cursor, loadedOlder: true });
+      } else {
+        publish({ records, cursor, loadedOlder: false });
+        if (previous.records.length && !records.length) onEmpty();
+      }
       setError(null);
     } catch (cause) {
       if (current()) setError(cause instanceof Error ? cause.message : "Could not load history.");
     } finally { if (current()) setLoading(false); }
-  }, [headers, onEmpty, invalidateRequests]);
+  }, [headers, onEmpty, invalidateRequests, publish]);
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);
@@ -54,7 +61,8 @@ export function usePracticeHistory(headers: () => Promise<Record<string, string>
   }, [load, invalidateRequests]);
   function upsert(record: AttemptRecord) {
     invalidateRequests();
-    setPage(previous => ({ ...previous, records: merge(previous.records, [record]) }));
+    const previous = currentPage.current;
+    publish({ ...previous, records: merge(previous.records, [record]) });
   }
   return { records: page.records, cursor: page.cursor, error, loading, load, upsert };
 }

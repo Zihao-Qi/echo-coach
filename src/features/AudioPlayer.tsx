@@ -39,6 +39,7 @@ export function AudioPlayer({
   const current = Math.min(elapsed, total);
 
   useEffect(() => {
+    if (failed) return;
     const audio = element.current;
     if (!audio) return;
     mounted.add(audio);
@@ -47,7 +48,7 @@ export function AudioPlayer({
       if (playing === audio) playing = undefined;
       rewind(audio);
     };
-  }, []);
+  }, [failed]);
 
   function fail(audio: HTMLAudioElement) {
     if (playing === audio) stopDemoAudio();
@@ -89,65 +90,68 @@ export function AudioPlayer({
       >
         {failed ? "Audio isn't available right now." : ""}
       </p>
-      <div
-        hidden={failed}
-        className={`mt-4 grid items-center gap-2 rounded-xl p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] ${question ? "bg-pebble" : "bg-night-inset"}`}
-      >
-        <audio
-          ref={element}
-          src={asset.path}
-          preload="none"
-          onPlay={() => setPaused(false)}
-          onPause={() => setPaused(true)}
-          onTimeUpdate={(event) => setElapsed(event.currentTarget.currentTime)}
-          onEnded={(event) => {
-            if (playing === event.currentTarget) playing = undefined;
-            rewind(event.currentTarget);
-            setElapsed(0);
-            setPaused(true);
-          }}
-          onError={(event) => {
-            if (playing === event.currentTarget) fail(event.currentTarget);
-          }}
-        />
-        <button
-          type="button"
-          className={`action ${question ? "border-marigold bg-marigold text-white hover:bg-marigold-hover" : "border-bright bg-bright px-3 text-ink hover:bg-canvas focus-visible:outline-bright!"}`}
-          aria-label={label}
-          onClick={() => void toggle()}
+      {!failed && (
+        <div
+          className={`mt-4 grid items-center gap-2 rounded-xl p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] ${question ? "bg-pebble" : "bg-night-inset"}`}
         >
-          <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>
-          {question ? label : paused ? "Play" : "Pause"}
-        </button>
-        <div className="flex min-w-0 items-center gap-2">
-          <div
-            role="progressbar"
-            aria-label={
-              question
-                ? "Question audio progress"
-                : "Sample polished answer audio progress"
+          <audio
+            ref={element}
+            src={asset.path}
+            preload="none"
+            onPlay={() => setPaused(false)}
+            onPause={() => setPaused(true)}
+            onTimeUpdate={(event) =>
+              setElapsed(event.currentTarget.currentTime)
             }
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuenow={current}
-            aria-valuetext={`${clock(current)} of ${clock(total)}`}
-            className={`h-2 flex-1 overflow-hidden rounded-full ${question ? "bg-line-strong" : "bg-night"}`}
+            onEnded={(event) => {
+              if (playing === event.currentTarget) playing = undefined;
+              rewind(event.currentTarget);
+              setElapsed(0);
+              setPaused(true);
+            }}
+            onError={(event) => {
+              if (playing === event.currentTarget) fail(event.currentTarget);
+            }}
+          />
+          <button
+            type="button"
+            className={`action ${question ? "border-marigold bg-marigold text-white hover:bg-marigold-hover" : "border-bright bg-bright px-3 text-ink hover:bg-canvas focus-visible:outline-bright!"}`}
+            aria-label={label}
+            onClick={() => void toggle()}
           >
+            <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>
+            {question ? label : paused ? "Play" : "Pause"}
+          </button>
+          <div className="flex min-w-0 items-center gap-2">
             <div
-              className={`h-full ${question ? "bg-marigold" : "bg-bright"}`}
-              style={{ width: `${(100 * current) / total}%` }}
-            />
+              role="progressbar"
+              aria-label={
+                question
+                  ? "Question audio progress"
+                  : "Sample polished answer audio progress"
+              }
+              aria-valuemin={0}
+              aria-valuemax={total}
+              aria-valuenow={current}
+              aria-valuetext={`${clock(current)} of ${clock(total)}`}
+              className={`h-2 flex-1 overflow-hidden rounded-full ${question ? "bg-line-strong" : "bg-muted"}`}
+            >
+              <div
+                className={`h-full ${question ? "bg-marigold" : "bg-bright"}`}
+                style={{ width: `${(100 * current) / total}%` }}
+              />
+            </div>
+            <span aria-hidden="true" className="text-xs tabular-nums">
+              {clock(current)} / {clock(total)}
+            </span>
           </div>
-          <span aria-hidden="true" className="text-xs tabular-nums">
-            {clock(current)} / {clock(total)}
+          <span
+            className={`text-xs ${question ? "text-muted" : "text-night-muted"}`}
+          >
+            AI-generated voice
           </span>
         </div>
-        <span
-          className={`text-xs ${question ? "text-muted" : "text-night-muted"}`}
-        >
-          AI-generated voice
-        </span>
-      </div>
+      )}
     </>
   );
 }

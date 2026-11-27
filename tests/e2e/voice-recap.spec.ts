@@ -200,6 +200,31 @@ test("an empty recap reset clears live feedback and cached retry lineage but kee
   expect(fresh.submissionId).not.toBe(old.submissionId);
 });
 
+test("an uncertain first submission keeps its ID when history is still empty", async ({
+  page,
+}) => {
+  const payloads: unknown[] = [];
+  const evaluate = "**/api/practice/evaluate";
+  await page.route(evaluate, (route) => {
+    payloads.push(route.request().postDataJSON());
+    return payloads.length === 1
+      ? route.fulfill({ status: 503, json: { error: "Fixture unavailable" } })
+      : route.continue();
+  });
+  await page.goto("/practice?track=swe");
+  await draft(page).fill(first);
+  await button(page, "Get feedback").click();
+  await expect(
+    page.getByText("Fixture unavailable", { exact: true }),
+  ).toBeVisible();
+  await expect(button(page, "Get feedback")).toBeEnabled();
+  await expect(draft(page)).toHaveValue(first);
+  await submit(page, first);
+  expect(payloads).toHaveLength(2);
+  expect(payloads[0]).toMatchObject({ submissionId: expect.any(String) });
+  expect(payloads[1]).toEqual(payloads[0]);
+});
+
 test("recap focus merges the fresh page, keeps older pages and ignores a superseded response", async ({
   page,
 }) => {
@@ -251,6 +276,73 @@ test("recap focus merges the fresh page, keeps older pages and ignores a superse
   await expect(page.getByText(first, { exact: true })).toBeVisible();
   await expect(page.getByText(changed, { exact: true })).toBeVisible();
   await expect(button(page, "Load older attempts")).toHaveCount(0);
+});
+
+test("recap focus does not skip intervening history when only an upserted record overlaps", async ({
+  page,
+}) => {
+  const earliest = await makeRecord(
+    behavior,
+    1,
+    "First previously loaded answer.",
+  );
+  const oldHead = await makeRecord(
+    behavior,
+    2,
+    "Most recent previously loaded answer.",
+  );
+  const intervening = await makeRecord(
+    behavior,
+    3,
+    "An intervening answer that should not be skipped.",
+  );
+  const boundary = await makeRecord(
+    behavior,
+    4,
+    "Last answer in the fresh first page.",
+  );
+  const cursorFor = ({ submittedAt, id }: AttemptRecord) => ({
+    submittedAt,
+    id,
+  });
+  const history: { live?: AttemptRecord } = {};
+  await page.route(/\/api\/practice\/attempts(?:\?.*)?$/, (route) => {
+    const after = new URL(route.request().url()).searchParams.get("cursor");
+    if (after) {
+      const { id } = JSON.parse(after);
+      return route.fulfill({
+        json: {
+          records: id === boundary.id ? [intervening, oldHead] : [earliest],
+          cursor: null,
+        },
+      });
+    }
+    return route.fulfill({
+      json: history.live
+        ? { records: [history.live, boundary], cursor: cursorFor(boundary) }
+        : { records: [oldHead], cursor: cursorFor(oldHead) },
+    });
+  });
+  await page.goto("/practice?track=swe");
+  const recap = button(page, "Session recap");
+  const older = button(page, "Load older attempts");
+  await recap.click();
+  await older.click();
+  await expect(page.getByText(earliest.answer, { exact: true })).toBeVisible();
+  await expect(older).toHaveCount(0);
+  await button(page, "Back to practice").first().click();
+  const evaluated = page.waitForResponse("**/api/practice/evaluate");
+  await submit(page, first);
+  history.live = { ...(await (await evaluated).json()).attempt, status: "completed" };
+  await recap.click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByText(boundary.answer, { exact: true })).toBeVisible();
+  await expect(page.getByText(earliest.answer, { exact: true })).toBeVisible();
+  await older.click();
+  await expect(
+    page.getByRole("heading", { name: "Behavioral · 4 attempts" }),
+  ).toBeVisible();
+  await expect(older).toHaveCount(0);
 });
 
 test("only technical starters show polished sample text and playback", async ({
@@ -420,13 +512,17 @@ test.describe("bundled prerecorded audio", () => {
     await expect(unavailable).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     await expect(button(page, "Listen to the question")).toHaveCount(0);
+    await expect(page.locator("audio")).toHaveCount(0);
     await submit(page, first);
     await button(page, "Play sample polished answer").click();
     const card = page.getByRole("region", {
       name: "Sample polished answer",
       exact: true,
     });
-    await expect(card.getByRole("status")).toBeVisible();
+    await expect(card.getByRole("status")).toHaveText(
+      "Audio isn't available right now.",
+    );
+    await expect(card.locator("audio")).toHaveCount(0);
     await expect(card.getByRole("heading")).toBeFocused();
     await expect(
       card.getByText("constant time on average", { exact: true }),

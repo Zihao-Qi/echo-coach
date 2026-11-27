@@ -11,7 +11,7 @@ const PERMISSIONS_POLICY = "microphone=(self), camera=(), geolocation=()";
 const REFERRER_POLICY = "strict-origin-when-cross-origin";
 
 function requestArrivedOverHttps(request: NextRequest) {
-  const forwarded = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwarded = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
   return forwarded === "https" || request.nextUrl.protocol === "https:";
 }
 

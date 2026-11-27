@@ -61,7 +61,10 @@ function expectPage(response: NextResponse, https: boolean) {
   assert.equal(response.headers.get("x-middleware-request-content-security-policy"), policy);
   assert.equal(response.headers.get("permissions-policy"), PERMISSIONS_POLICY);
   assert.equal(response.headers.get("referrer-policy"), REFERRER_POLICY);
-  assert.equal(response.headers.get("content-security-policy")?.includes("script-src 'unsafe-inline'"), false);
+  assert.equal(response.headers.get("x-nonce"), null);
+  const scriptSrc = policy?.split("; ").find((directive) => directive.startsWith("script-src "));
+  assert.ok(scriptSrc);
+  assert.equal(scriptSrc.split(/\s+/).includes("'unsafe-inline'"), false);
   return nonce;
 }
 
@@ -74,7 +77,10 @@ function expectNoSecurityHeaders(response: NextResponse) {
 }
 
 test("public pages get a fresh nonce and the stage 1 headers; other responses stay unchanged", async () => {
-  const { proxy } = await import("../../src/proxy");
+  const proxyModule = await import("../../src/proxy");
+  assert.equal("config" in proxyModule, false);
+  assert.equal("matcher" in proxyModule, false);
+  const { proxy } = proxyModule;
   const pages = ["/", "/practice", "/practice/", "/mock-interview", "/mock-interview/"];
   const nonces = new Set<string>();
   for (const path of pages) {
@@ -98,6 +104,9 @@ test("public pages get a fresh nonce and the stage 1 headers; other responses st
   expectPage(forwarded, true);
   const plain = proxy(new NextRequest("http://127.0.0.1:8080/practice", { headers: { "x-forwarded-proto": "http" } }));
   expectPage(plain, false);
+  expectPage(proxy(new NextRequest("http://127.0.0.1:8080/", { headers: { "x-forwarded-proto": "HTTPS" } })), true);
+  expectPage(proxy(new NextRequest("http://127.0.0.1:8080/", { headers: { "x-forwarded-proto": "https, http" } })), true);
+  expectPage(proxy(new NextRequest("http://127.0.0.1:8080/practice", { headers: { "x-forwarded-proto": "http, https" } })), false);
 
   const audio = demoAudioPaths.values().next().value;
   assert.ok(audio);
@@ -106,6 +115,14 @@ test("public pages get a fresh nonce and the stage 1 headers; other responses st
     assert.equal(response.status, 200, path);
     expectNoSecurityHeaders(response);
   }
+
+  const prefetch = { "next-router-prefetch": "1", purpose: "prefetch" };
+  const prefetchedApi = proxy(new NextRequest("http://127.0.0.1:3000/api/practice/access", { headers: prefetch }));
+  assert.equal(prefetchedApi.status, 200);
+  expectNoSecurityHeaders(prefetchedApi);
+  const prefetchedPage = proxy(new NextRequest("http://127.0.0.1:3000/legacy", { headers: prefetch }));
+  assert.equal(prefetchedPage.status, 404);
+  expectNoSecurityHeaders(prefetchedPage);
 
   const missing = proxy(new NextRequest("http://127.0.0.1:3000/legacy"));
   assert.equal(missing.status, 404);
@@ -132,4 +149,7 @@ test("public pages get a fresh nonce and the stage 1 headers; other responses st
   assert.ok(Number(limited?.headers.get("retry-after")) > 0);
   assert.deepEqual(await limited!.json(), { error: "The demo is busy. Wait a moment and try again; your draft is still here." });
   expectNoSecurityHeaders(limited!);
+  const prefetchedLimit = proxy(new NextRequest("http://127.0.0.1:3000/api/practice/attempts", { headers: { "next-router-prefetch": "1", purpose: "prefetch" } }));
+  assert.equal(prefetchedLimit.status, 429);
+  expectNoSecurityHeaders(prefetchedLimit);
 });

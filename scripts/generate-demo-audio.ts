@@ -113,7 +113,7 @@ export function executionKey(
   if (!env.GEMINI_API_KEY?.trim())
     throw new Error("GEMINI_API_KEY is required for execution.");
   if (!hasFfmpeg()) throw new Error("ffmpeg is required for execution.");
-  return env.GEMINI_API_KEY;
+  return env.GEMINI_API_KEY.trim();
 }
 
 function unexpectedFormat(): never {

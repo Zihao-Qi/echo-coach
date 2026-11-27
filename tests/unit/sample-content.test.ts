@@ -31,9 +31,15 @@ test("sample copy covers only the starter questions and reserves polished answer
     assert.doesNotMatch(text, /["“”‘’]/u, `${id}: quotation marks in spoken copy`);
     assert.ok(highlights.length >= 2 && highlights.length <= 3, `${id}: wrong highlight count`);
     assert.equal(new Set(highlights).size, highlights.length, `${id}: duplicate highlights`);
+    const ranges: { start: number; end: number }[] = [];
     for (const phrase of highlights) {
       assert.ok(phrase.length > 0 && phrase === phrase.trim(), `${id}: invalid highlight`);
-      assert.equal(text.split(phrase).length - 1, 1, `${id}: expected one occurrence of ${phrase}`);
+      const start = text.indexOf(phrase);
+      assert.ok(start >= 0 && start === text.lastIndexOf(phrase), `${id}: expected one occurrence of ${phrase}`);
+      assert.ok(polishedAnswer.some(paragraph => paragraph.includes(phrase)), `${id}: highlight crosses paragraphs`);
+      const end = start + phrase.length;
+      assert.ok(ranges.every(other => end <= other.start || start >= other.end), `${id}: overlapping highlight ${phrase}`);
+      ranges.push({ start, end });
     }
   }
 });

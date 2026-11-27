@@ -142,10 +142,10 @@ test("WAV parsing rejects unsupported or malformed audio without leaking provide
     );
 });
 
-test("manifest is either deliberately empty or exactly matches all current starter question and polished texts", () => {
+test("manifest contains every current starter question and polished answer recording", () => {
   assert.equal(jobs.filter((job) => job.kind === "question").length, 9);
   assert.equal(jobs.filter((job) => job.kind === "answer").length, 6);
-  if (demoAudioAssets.length) assert.equal(demoAudioAssets.length, jobs.length);
+  assert.equal(demoAudioAssets.length, jobs.length);
   const root = "public/audio";
   const files = existsSync(root)
     ? readdirSync(root, { recursive: true, withFileTypes: true })
@@ -301,7 +301,7 @@ test("plan CLI works with networking blocked; execution rejects CI, public mode,
     assert.throws(() => executionKey(env, () => false), expected);
   }
   assert.equal(
-    executionKey({ GEMINI_API_KEY: fake }, () => true),
+    executionKey({ GEMINI_API_KEY: ` ${fake}\n` }, () => true),
     fake,
   );
 });

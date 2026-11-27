@@ -460,7 +460,7 @@ function PracticeSessionView({
                   >
                     {(!PUBLIC_DEMO_BUILD || sample) && (
                       <VoiceAnswerPanel
-                        browserOnly={PUBLIC_DEMO_BUILD}
+                        mode={voice.mode}
                         voice={voice}
                         transcriptionAccess={access.transcription}
                         evaluationPending={pending}
@@ -497,9 +497,11 @@ function PracticeSessionView({
                         id="voice-submit-guard"
                         className="my-2 rounded-xl bg-pebble p-3 text-sm"
                       >
-                        {PUBLIC_DEMO_BUILD
-                          ? "Use or discard the sample transcript before submitting your answer for feedback."
-                          : "Apply or discard your recorded voice state above before submitting your answer for feedback."}
+                        {voice.mode === "browser-speech"
+                          ? "Use or discard the transcript before submitting your answer for feedback."
+                          : voice.mode === "sample"
+                            ? "Use or discard the sample transcript before submitting your answer for feedback."
+                            : "Apply or discard your recorded voice state above before submitting your answer for feedback."}
                       </p>
                     )}
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

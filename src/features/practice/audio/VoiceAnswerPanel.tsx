@@ -30,6 +30,7 @@ interface VoiceAnswerPanelProps {
   voice: ReturnType<typeof useVoiceRecording>;
   evaluationPending: boolean;
   hasExistingTypedDraft: boolean;
+  onRemoveKey?: () => void;
 }
 
 export function VoiceAnswerPanel({
@@ -37,7 +38,7 @@ export function VoiceAnswerPanel({
   mode = "server",
   voice,
   evaluationPending,
-  hasExistingTypedDraft,
+  hasExistingTypedDraft, onRemoveKey,
 }: VoiceAnswerPanelProps) {
   const {
     phase,
@@ -46,7 +47,7 @@ export function VoiceAnswerPanel({
     durationSeconds,
     transcriptText,
     setTranscriptText,
-    error,
+    error, offerRemoveKey,
     errorRecovery,
     statusAnnouncement,
     stopButtonRef,
@@ -63,8 +64,9 @@ export function VoiceAnswerPanel({
 
   const isDisabledCapability =
     mode === "server" && (!transcriptionAccess.available || transcriptionAccess.mode === "disabled");
-  const reviewLabel = mode === "browser-speech" ? "Your transcript" : mode === "sample" ? "Sample transcript" : "Review and edit demo transcript before applying";
-  const reviewDescription = mode === "browser-speech"
+  const realTranscript = mode === "browser-speech" || mode === "gemini-key";
+  const reviewLabel = realTranscript ? "Your transcript" : mode === "sample" ? "Sample transcript" : "Review and edit demo transcript before applying";
+  const reviewDescription = realTranscript
     ? "Edit this transcript before using it in your answer."
     : mode === "sample"
       ? "This demo doesn't recognize speech. Edit this sample before using it."
@@ -84,10 +86,10 @@ export function VoiceAnswerPanel({
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-sm font-bold text-ink">Record answer (optional)</h2>
             <span className="rounded-full border border-line bg-card px-2.5 py-0.5 text-xs font-semibold text-ink">
-              {mode === "browser-speech" ? "Browser speech" : mode === "sample" ? "Browser only" : isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
+              {mode === "gemini-key" ? "Gemini · your key" : mode === "browser-speech" ? "Browser speech" : mode === "sample" ? "Browser only" : isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
             </span>
           </div>
-          {mode === "browser-speech" ? (
+          {mode === "gemini-key" ? <p className="mt-1.5 text-xs leading-5 text-muted">Your recording is sent from this browser to Google with your key for transcription, and discarded here once done.</p> : mode === "browser-speech" ? (
             <p className="mt-1.5 text-xs leading-5 text-muted">
               Your browser turns your speech into text and may send your audio to its provider (such as Google, Apple or Microsoft). Echo Coach&apos;s server doesn&apos;t receive it.
             </p>
@@ -232,7 +234,7 @@ export function VoiceAnswerPanel({
       {phase === "transcribing" && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="text-xs font-medium text-body">
-            Transcribing audio (demo fixture)… Navigation is locked until completion or cancellation.
+            {mode === "gemini-key" ? "Transcribing audio with your key…" : "Transcribing audio (demo fixture)…"} Navigation is locked until completion or cancellation.
           </p>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} onClick={cancelTranscriptionWait}>
@@ -321,6 +323,7 @@ export function VoiceAnswerPanel({
             Your typed answer box below remains available at any time.
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
+            {offerRemoveKey && onRemoveKey && <button type="button" className={button} disabled={evaluationPending} onClick={onRemoveKey}>Remove key</button>}
             {errorRecovery === "recover" && hasRetainedAudio && (
               <button
                 type="button"
@@ -338,7 +341,7 @@ export function VoiceAnswerPanel({
                 className={primaryButton}
                 onClick={startNewTranscriptionAttempt}
               >
-                Start new transcription
+                {mode === "gemini-key" ? "Try transcription again" : "Start new transcription"}
               </button>
             )}
             {!isDisabledCapability && (

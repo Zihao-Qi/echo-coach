@@ -11,7 +11,12 @@ import { PolishedAnswer } from "./PolishedAnswer";
 import { FollowUpCard } from "./FollowUpCard";
 import { RetryComparisonPanel } from "./RetryComparisonPanel";
 
+import { AudioPlayer, stopDemoAudio } from "../AudioPlayer";
+import { speak } from "./key/transport";
+
 interface Props {
+  keyMode?: boolean;
+  onGenerating: (busy: boolean) => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
   latest: AnswerAttempt;
   displayedQuestion: InterviewQuestion;
@@ -45,7 +50,7 @@ function FeedbackSection({
   );
 }
 export function PracticeFeedback({
-  headingRef,
+  headingRef, keyMode, onGenerating,
   latest,
   displayedQuestion,
   starterId,
@@ -71,7 +76,7 @@ export function PracticeFeedback({
   ];
   const demo = latest.provenance.mode === "demo",
     behavioral = displayedQuestion.track === "behavioral";
-  const sample = starterId ? getSampleContent(starterId) : undefined;
+  const sample = !keyMode && starterId ? getSampleContent(starterId) : undefined;
   const hasSample = !!sample?.polishedAnswer;
   const e = latest.evaluation,
     usage = latest.provenance.usage,
@@ -135,7 +140,7 @@ export function PracticeFeedback({
             {!demo && (
               <span className="rounded-full bg-pebble px-3 py-1 text-xs font-semibold">
                 Gemini · {latest.provenance.model}
-                {latest.provenance.thinkingLevel ? " · low thinking" : ""}
+                {keyMode ? " · your key" : latest.provenance.thinkingLevel ? " · low thinking" : ""}
               </span>
             )}
           </div>
@@ -257,13 +262,14 @@ export function PracticeFeedback({
                 />
               )}
               {!demo && (
-                <details className="panel">
+                <details key={`suggestion:${latest.id}`} className="panel" onToggle={event => { if (keyMode && !event.currentTarget.open) stopDemoAudio(); }}>
                   <summary className="cursor-pointer font-semibold">
                     Optional suggested answer · try improving yours first
                   </summary>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-7">
                     {e.suggestedAnswer}
                   </p>
+                  {keyMode && <AudioPlayer headingRef={headingRef} generated={{ load: signal => speak(e.suggestedAnswer, signal), onBusy: onGenerating, disabled: pending }} />}
                 </details>
               )}
             </div>

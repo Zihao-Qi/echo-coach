@@ -50,6 +50,8 @@ body {
 .refresh textarea::placeholder { color: var(--color-muted); opacity: 1; }
 .refresh :is(a, button, select, summary, textarea):focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
 .refresh :is(button, select, textarea):disabled, .refresh [aria-disabled=true] { @apply cursor-not-allowed border-line-strong bg-disabled text-disabled-text; }
+.refresh[data-key-mode] .pill[aria-pressed=true]:disabled { @apply border-ink; }
+.refresh .key-mode-brand[aria-disabled=true] { @apply bg-transparent; }
 @layer components {
   .shell { @apply mx-auto max-w-5xl; }
   .panel { @apply rounded-3xl border border-line bg-card p-5 sm:p-7; }

@@ -5,6 +5,7 @@ import {
   PUBLIC_DEMO_BUILD,
   SAMPLE_FEEDBACK_NOTICE,
 } from "../infrastructure/config/public-demo";
+import { renderPublicDemoPerRequest } from "../infrastructure/config/public-demo-rendering";
 
 const tracks = [
   [
@@ -23,7 +24,8 @@ const tracks = [
     "Connect model choices and evaluation methods to the problem you are solving.",
   ],
 ];
-export default function HomePage() {
+export default async function HomePage() {
+  await renderPublicDemoPerRequest();
   return (
     <div className="refresh">
       <div className="shell">

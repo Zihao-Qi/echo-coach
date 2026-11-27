@@ -5,17 +5,23 @@ export const isPublicPracticeApi = (path: string) =>
     path,
   );
 
+export function isPublicDemoPage(path: string) {
+  return (
+    path === "/" ||
+    path === "/practice" ||
+    path === "/practice/" ||
+    path === "/mock-interview" ||
+    path === "/mock-interview/"
+  );
+}
+
 export function isPublicDemoPathAllowed(
   path: string,
   audio: ReadonlySet<string> = demoAudioPaths,
 ) {
   return (
     isPublicPracticeApi(path) ||
-    path === "/" ||
-    path === "/practice" ||
-    path === "/practice/" ||
-    path === "/mock-interview" ||
-    path === "/mock-interview/" ||
+    isPublicDemoPage(path) ||
     audio.has(path) ||
     path === "/favicon.ico" ||
     path.startsWith("/_next/static/")

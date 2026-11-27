@@ -1,6 +1,6 @@
 # Bring your own Gemini key, and browser speech recognition (public demo)
 
-**Status:** Approved by the owner on 2026-11-26 after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). Stage 1 in progress. Not implemented. Deployment is a separate release task.
+**Status (2026-11-27):** All three stages are merged in [PR #15](https://github.com/Zihao-Qi/echo-coach/pull/15), [PR #16](https://github.com/Zihao-Qi/echo-coach/pull/16), and [PR #17](https://github.com/Zihao-Qi/echo-coach/pull/17). [PR #18](https://github.com/Zihao-Qi/echo-coach/pull/18) fixes live Gemini transcription. The candidate is on an owner-only preview, not on the public URL. See [implementation and release status](implementation-status.md). The body preserves the approved feature design and its pre-implementation findings.
 
 ## Goal
 

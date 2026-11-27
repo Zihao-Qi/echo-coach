@@ -1,147 +1,52 @@
 # Echo Coach
 
-## Public demo (not launched)
+Echo Coach is an interview-practice workspace for new graduates. Work through behavioral, software engineering, and AI/ML questions, revise your answers, and compare attempts. Feedback is practice guidance, not a hiring decision or a score.
 
-The [public demo profile](docs/public-demo-readiness.md) offers typed practice with sample feedback, not a personal assessment. It has no account, voice recording, legacy interview, or live model calls. History is temporary and can reset. The next public release adds three new practice questions, the retry focus cue, and the next-question shortcut to `/practice`. The public demo does not link to or serve `/mock-interview`. The features below describe the repository’s other local or private profiles unless noted.
+## Try the public demo
 
-## Reconstruction preview
+[Open Echo Coach](https://echo-coach-demo-189032457820.us-central1.run.app). The live demo needs no account or API key. Use fictional answers: feedback is illustrative, not an assessment, and server-side sample history is temporary.
 
-The redesigned home is at `/`, the new-graduate practice workspace is at `/practice`, and the original voice demo remains at `/legacy`.
+- **Focused practice** (`/practice`) offers nine starter questions, progressive hints, retry comparisons, one-level follow-ups, and a session recap.
+- **Typed mock interview** (`/mock-interview`) is a three-question round with optional self-review, not live AI coaching.
+- **Audio practice** includes prerecorded questions and selected sample answers. The live demo can capture your voice for practice, but its editable transcript is a fixed sample, not your spoken words.
 
-- Nine curated starter questions across behavioral, software engineering, and AI/ML, including clarifying requirements, stable pagination, and investigating label quality.
-- Progressive hints, question-aware structured feedback, and separate retry attempts.
-- [Retry comparison](docs/retry-comparison.md) shows before/after evidence, regressions, and a next focus using the same evaluation request; historical feedback and linked baselines remain accessible. The retry composer shows one saved action to focus on.
-- [Try another question](docs/post-retry-next-question.md) opens the next question in the same track after a completed retry, without losing drafts.
-- [Typed mock interview](docs/mock-interview.md) at `/mock-interview` offers a three-question round and optional self-review, without coaching during the round or any API calls.
-- [Targeted follow-ups](docs/follow-up-design.md) offer one optional focused question within that same evaluation. Original/follow-up drafts and retry histories stay separate; saved questions reopen with their historical snapshots. Gemini 4 designed and implemented the UI, followed by lead critique and independent GPT-6.1-Sol/high review.
-- Default demo feedback is illustrative, **not an assessment of correctness**.
-- Coaching now includes separate accuracy, reasoning, structure, and evidence findings. [Gemini evaluation setup](docs/gemini-evaluation.md) covers bounded local testing and the benchmark. The user's local configuration now uses Gemini 3.8 Flash / low thinking; the shared `.env.example` still defaults to mock feedback.
-- Google sign-in via Auth.js, verified-email allowlisting, owner-scoped Firestore repositories, saved-attempt recovery, pagination, and transactional daily evaluation limits are implemented for real mode.
-- Demo mode stores attempts in server memory per signed browser session. They survive a page refresh, but are **not durable or cross-device**.
-- Real Google login can be tested without paid AI/storage: `PRACTICE_AUTH_MODE=google`, `PRACTICE_STORAGE=memory`, `USE_MOCK=true`. The UI labels preview storage and illustrative feedback.
-- Real Google OAuth/Firestore integration requires setup and has not yet been credential-tested. Firebase association is not required.
-- [Recorded-answer demo](docs/recorded-voice-ui.md): record → stop → edit a fixed example transcript → explicitly confirm your draft → separately request feedback. **It does not recognize your speech yet.** Audio goes to this app for validation, not Google. Real transcription and Live conversation remain upcoming. [Capture feasibility results](docs/recorded-voice-feasibility.md) cover the isolated 120-second Chrome test.
-- Run `npm run test:unit` for workflow and API tests; `npm run test:integration` exercises real Next.js session handling with synthetic Auth.js cookies, without calling cloud services.
+### Merged, not yet live on the public URL
 
-For real practice, configure Google Web OAuth credentials, `AUTH_SECRET`, canonical `AUTH_URL`, ADC, your email allowlist, `GEMINI_API_KEY`, and `GEMINI_EVALUATION_MODEL`, then set `USE_MOCK=false` (see [.env.example](.env.example) and [cloud setup](docs/cloud-setup.md)). No model is silently selected. Real endpoints require a validated Auth.js session for an allowlisted, verified Google account. **Legacy real-mode endpoints are blocked in production** because their persistence is not owner-scoped.
+[Browser speech recognition and bring your own Gemini key](docs/bring-your-own-key.md) are on `main` and in a private release preview. With no key, supported browsers can transcribe your speech through their own speech service; browsers without support keep the sample recorder. With your own key, you can get Gemini feedback, technical suggested-answer audio, recording transcription, and follow-up questions. The browser calls Google directly; Echo Coach’s server does not receive your key or recording. Gemini calls use your key’s quota and may incur charges. Key-mode history stays in the tab, separate from sample history.
 
-Plans and audit: [reconstruction plan](docs/reconstruction-plan.md), [current-project review](docs/current-project-review.md), [Opus-reviewed recorded-voice plan](docs/recorded-voice-plan.md).
+See [current implementation and release status](docs/implementation-status.md) for what has passed and what still needs verification.
 
-## Original prototype
+## Run locally
 
-`Echo Coach` is a Next.js prototype for a live interview expression coach. The current MVP asks an interview question aloud, captures the user’s spoken answer, rewrites that answer into a clearer and more professional response, and lets the user replay the polished version for practice.
-
-Architecture diagram:
-- [docs/architecture.md](./docs/architecture.md)
-
-Local development defaults to the mock coaching flow so the full product shell can be built without cloud dependencies. Real mode uses:
-- Gemini Live for the spoken interviewer
-- Chirp 3 for transcript capture
-- Gemini 2.5 Flash for answer rewriting
-- Gemini Flash TTS for practice playback
-- Imagen 4 Fast for the recap cue card
-- Firestore for persisted session recap/history
-
-## Local Development
-
-Start the app:
+Use Node.js 22, the same major version as CI and the release image:
 
 ```bash
+npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [localhost:3000](http://localhost:3000). The default local setup uses mock feedback. See [`.env.example`](.env.example) for configuration; keep actual credentials in an ignored local file.
 
-## Real-Mode Development
+- **Private practice:** [Auth.js and Firestore setup](docs/cloud-setup.md) covers optional Google sign-in, owner-scoped history, and real server-side evaluation. This is separate from public browser key mode.
+- **Local recording:** the [default recording flow](docs/recorded-voice-ui.md) validates captured audio and returns a fixture transcript when demo transcription is enabled. It is not real speech recognition.
+- **Legacy prototype:** `/legacy` is retained outside the public profile. Its real-mode endpoints are blocked in production. Do not use legacy instructions to deploy the public demo.
 
-To exercise the real cloud path instead of the local mock flow:
-
-```bash
-USE_MOCK=false npm run dev
-```
-
-That mode requires:
-- `GEMINI_API_KEY`
-- `GOOGLE_CLOUD_PROJECT`
-- working Google Cloud authentication for Speech-to-Text V2
-- `speech.googleapis.com` enabled on the active project
-
-Optional:
-
-```bash
-GOOGLE_CLOUD_SPEECH_LOCATION=us
-```
-
-The transcript route defaults to `us`, which matches the current Chirp 3 setup path used by the app.
-
-## Quality Checks
-
-Run the static checks:
+## Verify changes
 
 ```bash
 npm run lint
-npm run build
-```
-
-Install the Chromium browser used by the checked-in Playwright suite:
-
-```bash
+npx tsc --noEmit
+npm run test:unit
+npm run test:integration
 npm run test:e2e:install
-```
-
-Run the browser tests:
-
-```bash
 npm run test:e2e
 ```
 
-The checked-in Playwright suite forces `USE_MOCK=true` so browser tests stay deterministic and do not depend on cloud credentials.
+CI also builds the public-demo image and exercises it over HTTPS with synthetic inputs and fake Gemini responses. No real key is needed for automated tests.
 
-## Original Cloud Run Deployment Reference
+## Further reading
 
-**Historical prototype instructions below are not the reconstructed app's release checklist.** Use [docs/cloud-setup.md](docs/cloud-setup.md) for private practice requirements. No reconstructed cloud deployment has been verified yet. Legacy real-mode API calls are blocked in production.
-
-The container uses Cloud Run-compatible standalone Next.js output.
-
-Required runtime environment variables:
-- `USE_MOCK=false`
-- `GEMINI_API_KEY`
-- `GOOGLE_CLOUD_PROJECT`
-- `GOOGLE_CLOUD_SPEECH_LOCATION=us`
-
-Recommended one-time setup:
-
-```bash
-gcloud config set project echo-490312
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com speech.googleapis.com firestore.googleapis.com
-```
-
-Deploy:
-
-```bash
-cd /Users/xiaoxiawang/Desktop/Echo/echo-coach
-
-gcloud run deploy echo-coach \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars USE_MOCK=false,GOOGLE_CLOUD_PROJECT=echo-490312,GOOGLE_CLOUD_SPEECH_LOCATION=us,GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-```
-
-After deployment, open the service URL and run one real interview session end to end.
-
-## Browser Test Coverage
-
-- onboarding to session to recap happy path
-- `Coach this answer` rewrite flow
-- recap alignment with the coached answer
-- invalid direct session route redirect
-- invalid direct recap route redirect
-- recap refresh redirect behavior
-
-## Current Constraints
-
-- The polished MVP is interview-only and English-only.
-- The mock flow is fully verified, and the real cloud chain has passed a credentialed smoke test.
-- The remaining validation is subjective browser QA with a real voice and speakers.
-- TTS depends on Gemini quota; the app now falls back from `gemini-2.5-flash-preview-tts` to `gemini-2.5-pro-preview-tts` when the first model is exhausted.
+- [Progress and release status](docs/implementation-status.md)
+- [Architecture](docs/architecture.md)
+- [Retry comparison](docs/retry-comparison.md) and [targeted follow-ups](docs/follow-up-design.md)
+- [Voice and recap release](docs/voice-and-recap.md) and [public deployment record](docs/public-demo-update.md)

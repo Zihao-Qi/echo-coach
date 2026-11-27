@@ -43,7 +43,7 @@ export function PolishedAnswer({
   const asset = getDemoAudio(id, "answer");
   return (
     <section
-      className="rounded-3xl bg-night p-5 text-canvas sm:p-7"
+      className="rounded-3xl bg-night p-5 text-canvas sm:py-7"
       aria-labelledby="sample-polished-heading"
     >
       <h3
@@ -60,7 +60,8 @@ export function PolishedAnswer({
       {asset && (
         <AudioPlayer key={asset.path} asset={asset} headingRef={heading} />
       )}
-      <div className="mt-4 space-y-3 text-sm leading-7">
+      <blockquote className="relative mt-4 space-y-3 rounded-xl bg-night-inset px-6 py-4 text-sm leading-7">
+        <span aria-hidden="true" className="absolute left-2 top-2 text-xl text-bright">“</span>
         {paragraphs.map((text, index) => (
           <EmphasizedParagraph
             key={index}
@@ -68,7 +69,8 @@ export function PolishedAnswer({
             highlights={highlights}
           />
         ))}
-      </div>
+        <span aria-hidden="true" className="absolute bottom-2 right-2 text-xl text-bright">”</span>
+      </blockquote>
     </section>
   );
 }

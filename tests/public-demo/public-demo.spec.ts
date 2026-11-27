@@ -166,19 +166,18 @@ test("the public mock round makes no API calls and bundled audio supports range 
   await page.getByRole("button", { name: "Start mock interview" }).click();
   const question = demoAudioAssets.find(asset => asset.kind === "question" && asset.id === "behavioral-project");
   const listen = page.getByRole("button", { name: "Listen to the question" });
-  if (question) {
-    await expect(listen).toBeVisible();
-    const range = await page.request.get(question.path, { headers: { Range: "bytes=0-31" } });
-    expect(range.status()).toBe(206);
-    expect(range.headers()["content-range"]).toBe(`bytes 0-31/${question.size}`);
-    expect(range.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
-    await listen.click();
-    await expect(page.getByRole("button", { name: "Pause question audio" })).toBeVisible();
-  } else await expect(listen).toHaveCount(0);
+  expect(question).toBeDefined();
+  await expect(listen).toBeVisible();
+  const range = await page.request.get(question!.path, { headers: { Range: "bytes=0-31" } });
+  expect(range.status()).toBe(206);
+  expect(range.headers()["content-range"]).toBe(`bytes 0-31/${question!.size}`);
+  expect(range.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
+  await listen.click();
+  await expect(page.getByRole("button", { name: "Pause question audio" })).toBeVisible();
   await page.getByRole("button", { name: "Skip question" }).click();
   await page.getByRole("button", { name: "End round early" }).click();
   await expect(page.getByRole("heading", { name: "Round answers" })).toBeVisible();
-  for (const path of ["/audio/questions/not-bundled.12345678.m4a", "/audio/answers/nested/nonexistent.12345678.m4a", ...(question ? [question.path.replace(".m4a", "%2em4a")] : [])]) {
+  for (const path of ["/audio/questions/not-bundled.12345678.m4a", "/audio/answers/nested/nonexistent.12345678.m4a", question!.path.replace(".m4a", "%2em4a")]) {
     const missing = await page.request.get(path);
     expect(missing.status(), path).toBe(404);
     expect(missing.headers()["cache-control"]).toBe("private, no-store");
@@ -216,22 +215,23 @@ test("public recording releases fake microphone tracks and never makes an audio 
   expect(await microphone()).toEqual({ calls: 0, live: 0 });
   await page.getByRole("button", { name: "Software engineering", exact: true }).click();
   const listen = page.getByRole("button", { name: "Listen to the question" });
-  if (demoAudioAssets.length > 0) {
-    await listen.click();
-    const pause = page.getByRole("button", { name: "Pause question audio" });
-    await expect(pause).toBeVisible();
-    await pause.click();
-    await listen.click();
-    await expect(pause).toBeVisible();
-  } else await expect(listen).toHaveCount(0);
+  await listen.click();
+  const pause = page.getByRole("button", { name: "Pause question audio" });
+  await expect(pause).toBeVisible();
+  await pause.click();
+  await listen.click();
+  await expect(pause).toBeVisible();
   await answer.fill(draft);
   await record.click();
   await expect(stop).toBeVisible();
-  if (demoAudioAssets.length > 0) await expect(listen).toBeVisible();
+  await expect(listen).toBeVisible();
   await expect(page.getByRole("button", { name: "Get feedback" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Behavioral", exact: true })).toBeDisabled();
   await stop.click();
   await expect(sample).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Record answer (optional)" })).toHaveCount(0);
+  await expect(page.getByText("Browser only", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/This demo doesn't recognize speech/i)).toHaveCount(1);
   await expect(sample).toHaveValue(getSampleContent("swe-hash-map")!.sampleTranscript);
   expect(await microphone()).toEqual({ calls: 1, live: 0 });
   await sample.fill("I edited this fictional sample before applying it.");

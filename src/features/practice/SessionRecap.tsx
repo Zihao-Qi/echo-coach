@@ -57,6 +57,7 @@ export function SessionRecap({
             ? "From this session's temporary history. No scores or assessments."
             : "From your saved practice history. No scores or assessments."}
         </p>
+        <button type="button" className="action mt-4" onClick={back}>Back to practice</button>
       </header>
       {error && (
         <p role="alert" className="rounded-xl bg-danger-tint p-4 text-danger">
@@ -88,7 +89,7 @@ export function SessionRecap({
           >
             <h2 className="eyeline">
               {question ? trackLabel(question.track) : "Saved question"}
-              {followUp && " · Follow-up"} · {count}{" "}
+              {followUp && " · Follow-up"} · {count}{"\u00a0"}
               {count === 1 ? "attempt" : "attempts"}
             </h2>
             <p className="mt-2 font-display text-xl font-bold">

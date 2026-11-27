@@ -112,9 +112,11 @@ export function PracticeFeedback({
       )}
       <div
         className={
-          behavioral || !demo || hasSample
-            ? "grid items-start gap-5 lg:grid-cols-[7fr_5fr]"
-            : "grid"
+          hasSample
+            ? "grid items-start gap-5 lg:grid-cols-2"
+            : behavioral || !demo
+              ? "grid items-start gap-5 lg:grid-cols-[7fr_5fr]"
+              : "grid"
         }
       >
         <section

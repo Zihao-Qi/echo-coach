@@ -1,9 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import {
-  demoAudioAssets,
-  getDemoAudio,
-  getSampleContent,
-} from "../../src/content/questions/demo-audio";
+import { getSampleContent } from "../../src/content/questions/demo-audio";
 import { findQuestion } from "../../src/content/questions/starter-bank";
 import { makeFollowUpQuestion } from "../../src/domain/interview/follow-up";
 import { DemoPracticeEvaluator } from "../../src/infrastructure/ai/demo/practice-evaluator";
@@ -129,14 +125,12 @@ test("session recap starts hidden, shows loaded groups and older attempts, then 
   ).toBeVisible();
   await expect(main.getByText(first, { exact: true })).toBeVisible();
   await expect(main.getByText(revised, { exact: true })).toBeVisible();
-  const sweSummary = main
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Software engineering · 2 attempts",
-        exact: true,
-      }),
-    });
+  const sweSummary = main.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "Software engineering · 2 attempts",
+      exact: true,
+    }),
+  });
   await expect(
     sweSummary.getByText(swe.rubric.expectedConcepts[0], { exact: true }),
   ).toBeVisible();
@@ -144,7 +138,9 @@ test("session recap starts hidden, shows loaded groups and older attempts, then 
   await expect(
     main.getByRole("link", { name: "Start 3-question mock interview" }),
   ).toHaveAttribute("href", "/mock-interview");
-  await button(page, "Back to practice").click();
+  const back = button(page, "Back to practice");
+  await expect(back).toHaveCount(2);
+  await back.last().click();
   await expect(main.getByRole("heading", { level: 1 })).toBeFocused();
   await expect(draft(page)).toHaveValue(
     "A saved local draft that I have not submitted for feedback.",
@@ -155,19 +151,113 @@ test("session recap starts hidden, shows loaded groups and older attempts, then 
   await expect(
     main.getByText("Your session history is empty. It may have reset."),
   ).toBeVisible();
-  await button(page, "Back to practice").click();
+  await back.first().click();
   await expect(recap).toHaveCount(0);
   await expect(draft(page)).toHaveValue(
     "A saved local draft that I have not submitted for feedback.",
   );
 });
 
-test("only technical starters show polished sample text; missing audio never leaves a dead control", async ({
+test("an empty recap reset clears live feedback and cached retry lineage but keeps the typed draft", async ({
+  page,
+}) => {
+  await page.goto("/practice?track=swe");
+  await submit(page, first);
+  await button(page, "Edit answer").click();
+  await draft(page).fill(revised);
+  // Leave an uncertain retry in the submission cache, without writing it on the server.
+  const evaluate = "**/api/practice/evaluate";
+  await page.route(evaluate, (route) =>
+    route.fulfill({ status: 503, json: { error: "Fixture unavailable" } }),
+  );
+  const pending = page.waitForRequest(evaluate);
+  await button(page, "Evaluate my retry").click();
+  const old = (await pending).postDataJSON();
+  expect(old.previousAttemptId).toBeTruthy();
+  await expect(
+    page.getByText("Fixture unavailable", { exact: true }),
+  ).toBeVisible();
+  await button(page, "Session recap").click();
+  await page.route("**/api/practice/attempts", (route) =>
+    route.fulfill({ json: { records: [], cursor: null } }),
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    page.getByText("Your session history is empty. It may have reset."),
+  ).toBeVisible();
+  await button(page, "Back to practice").first().click();
+  await expect(button(page, "Session recap")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Sample polished answer" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /1 attempt/ })).toHaveCount(0);
+  await expect(draft(page)).toHaveValue(revised);
+  await page.unroute(evaluate);
+  const next = page.waitForRequest(evaluate);
+  await button(page, "Get feedback").click();
+  const fresh = (await next).postDataJSON();
+  expect(fresh.previousAttemptId).toBeUndefined();
+  expect(fresh.submissionId).not.toBe(old.submissionId);
+});
+
+test("recap focus merges the fresh page, keeps older pages and ignores a superseded response", async ({
+  page,
+}) => {
+  const root = await makeRecord();
+  const latest = await makeRecord(swe, 2, revised);
+  const cursor = { id: latest.id, submittedAt: latest.submittedAt };
+  const changed = `${revised} This is the refreshed answer.`;
+  let loads = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/api\/practice\/attempts(?:\?.*)?$/, async (route) => {
+    if (new URL(route.request().url()).searchParams.has("cursor"))
+      return route.fulfill({ json: { records: [root], cursor: null } });
+    const load = ++loads;
+    if (load === 2) {
+      await gate;
+      return route.fulfill({ json: { records: [], cursor: null } });
+    }
+    return route.fulfill({
+      json: {
+        records: [load === 1 ? latest : { ...latest, answer: changed }],
+        cursor,
+      },
+    });
+  });
+  await page.goto("/practice?track=swe");
+  await button(page, "Session recap").click();
+  await button(page, "Load older attempts").click();
+  await expect(page.getByText(first, { exact: true })).toBeVisible();
+  const refocus = () =>
+    page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refocus();
+  await expect.poll(() => loads).toBe(2);
+  await refocus();
+  await expect(page.getByText(changed, { exact: true })).toBeVisible();
+  const finished = page.waitForEvent("requestfinished", (request) =>
+    request.url().endsWith("/api/practice/attempts"),
+  );
+  release();
+  await finished;
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await expect(page.getByText(first, { exact: true })).toBeVisible();
+  await expect(page.getByText(changed, { exact: true })).toBeVisible();
+  await expect(button(page, "Load older attempts")).toHaveCount(0);
+});
+
+test("only technical starters show polished sample text and playback", async ({
   page,
 }) => {
   await page.goto("/practice");
-  if (!getDemoAudio(behavior.id, "question"))
-    await expect(button(page, "Listen to the question")).toHaveCount(0);
+  await expect(button(page, "Listen to the question")).toBeVisible();
   await submit(
     page,
     "In a fictional project I built a catalog page and checked the design with two classmates.",
@@ -186,8 +276,7 @@ test("only technical starters show polished sample text; missing audio never lea
   await expect(polished).toBeVisible();
   for (const text of sample.polishedAnswer!)
     await expect(polished.getByText(text, { exact: true })).toBeVisible();
-  if (!getDemoAudio(swe.id, "answer"))
-    await expect(button(page, "Play sample polished answer")).toHaveCount(0);
+  await expect(button(page, "Play sample polished answer")).toBeVisible();
   await button(page, "Answer follow-up").click();
   await expect(polished).toHaveCount(0);
   await expect(button(page, "Listen to the question")).toHaveCount(0);
@@ -217,8 +306,13 @@ test("default demo fixture becomes the current starter transcript without changi
   page,
 }) => {
   await page.goto("/practice?track=swe");
+  await submit(page, first);
+  await button(page, "Edit answer").click();
+  const recap = button(page, "Session recap");
+  await expect(recap).toBeEnabled();
   await button(page, "Record answer").click();
   await expect(page.getByText(/Recording:.*0:01/)).toBeVisible();
+  await expect(recap).toBeDisabled();
   await button(page, "Stop recording").click();
   const route = page.waitForResponse(
     (r) =>
@@ -229,17 +323,31 @@ test("default demo fixture becomes the current starter transcript without changi
   expect((await (await route).json()).transcription.text).not.toBe(
     getSampleContent(swe.id)!.sampleTranscript,
   );
+  const transcript = page.getByLabel(
+    "Review and edit demo transcript before applying",
+  );
+  await expect(transcript).toHaveValue(
+    getSampleContent(swe.id)!.sampleTranscript,
+  );
+  const edited = "An edited but unapplied transcript.";
+  await transcript.fill(edited);
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await recap.click();
+  await expect(transcript).toHaveValue(edited);
   await expect(
-    page.getByLabel("Review and edit demo transcript before applying"),
-  ).toHaveValue(getSampleContent(swe.id)!.sampleTranscript);
+    page.getByRole("heading", { name: "Session recap" }),
+  ).toHaveCount(0);
+  page.once("dialog", (dialog) => dialog.accept());
+  await recap.click();
+  await expect(
+    page.getByRole("heading", { name: "Session recap" }),
+  ).toBeFocused();
+  await button(page, "Back to practice").first().click();
+  await expect(transcript).toHaveCount(0);
+  await expect(draft(page)).toHaveValue(first);
 });
 
 test.describe("bundled prerecorded audio", () => {
-  test.skip(
-    demoAudioAssets.length === 0,
-    "Run in a disposable tree with the silent AAC fixture manifest or reviewed audio.",
-  );
-
   test("plays on demand, pauses, resets at the end, and yields to the other player", async ({
     page,
   }) => {
@@ -285,7 +393,7 @@ test.describe("bundled prerecorded audio", () => {
     await expect(playAnswer).toBeVisible();
     await button(page, "Session recap").click();
     await expect(page.locator("audio")).toHaveCount(0);
-    await button(page, "Back to practice").click();
+    await button(page, "Back to practice").first().click();
     await expect(listen).toBeVisible();
     await listen.click();
     await expect(pause).toBeVisible();

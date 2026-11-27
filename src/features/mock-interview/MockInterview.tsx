@@ -19,7 +19,7 @@ const TRACK_LABELS: Record<string, string> = {
 const CARD = "panel";
 const FOCUS_RING =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
-const BTN_PRIMARY = `${FOCUS_RING} rounded-xl bg-ink px-5 py-2.5 text-sm font-bold text-white shadow-sm enabled:hover:bg-ink-hover`;
+const BTN_PRIMARY = `${FOCUS_RING} rounded-xl border border-ink bg-ink px-5 py-2.5 text-sm font-bold text-white shadow-sm enabled:hover:bg-ink-hover`;
 const BTN_SECONDARY = `${FOCUS_RING} rounded-xl border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold text-body hover:bg-pebble`;
 const BTN_DANGER = `${FOCUS_RING} rounded-xl border border-danger-line bg-danger-tint px-4 py-2.5 text-sm font-semibold text-danger hover:border-danger hover:bg-danger-line`;
 const TEXTAREA = "input-field mt-2";
@@ -232,15 +232,15 @@ export function MockInterview() {
                       placeholder="Type your response..."
                     />
                   </div>
-                  <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-                    <div className="grid gap-3 sm:flex sm:flex-wrap">
+                  <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+                    <div className="contents sm:flex sm:flex-wrap sm:gap-3">
                       <button
                         type="button"
                         disabled={!hasDraft}
                         onClick={() =>
                           dispatch({ type: "next", questionIndex: idx })
                         }
-                        className={BTN_PRIMARY}
+                        className={`col-span-2 ${BTN_PRIMARY}`}
                       >
                         {idx + 1 === total
                           ? "Finish round"
@@ -260,7 +260,7 @@ export function MockInterview() {
                         Skip question
                       </button>
                     </div>
-                    <div className="grid gap-3 sm:flex sm:flex-wrap">
+                    <div className="contents sm:flex sm:flex-wrap sm:gap-3">
                       {(idx + 1 < total || !hasDraft) && (
                         <button
                           type="button"
@@ -275,7 +275,7 @@ export function MockInterview() {
                       <button
                         type="button"
                         onClick={confirmDiscard}
-                        className={BTN_DANGER}
+                        className={`col-span-2 ${BTN_DANGER}`}
                       >
                         Discard round
                       </button>

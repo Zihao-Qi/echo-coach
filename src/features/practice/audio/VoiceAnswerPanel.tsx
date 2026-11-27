@@ -59,7 +59,7 @@ export function VoiceAnswerPanel({
       aria-label="Voice answer capture"
       className="mb-5 rounded-xl border border-line bg-pebble p-4"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {!(browserOnly && phase === "review") && <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-sm font-bold text-ink">Record answer (optional)</h2>
@@ -96,7 +96,7 @@ export function VoiceAnswerPanel({
             Record answer
           </button>
         )}
-      </div>
+      </div>}
 
       {phase === "requesting_permission" && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
@@ -206,7 +206,7 @@ export function VoiceAnswerPanel({
       )}
 
       {phase === "review" && (
-        <div className="mt-3 border-t border-line pt-3">
+        <div className={browserOnly ? undefined : "mt-3 border-t border-line pt-3"}>
           <label
             htmlFor="voice-transcript-review"
             className="block text-xs font-bold text-ink"

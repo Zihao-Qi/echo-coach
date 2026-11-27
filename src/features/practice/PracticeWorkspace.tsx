@@ -115,7 +115,7 @@ function PracticeSessionView({
   useEffect(() => {
     if (!recapOpen) return;
     const controller = new AbortController();
-    const refresh = () => void reloadHistory(controller.signal);
+    const refresh = () => void reloadHistory(controller.signal, undefined, true);
     window.addEventListener("focus", refresh);
     return () => {
       controller.abort();
@@ -325,7 +325,7 @@ function PracticeSessionView({
                       }}
                     >
                       {group.question.competency} · {group.question.prompt} ·{" "}
-                      {group.attempts.length}{" "}
+                      {group.attempts.length}{"\u00a0"}
                       {group.attempts.length === 1 ? "attempt" : "attempts"}
                     </button>
                   ))}

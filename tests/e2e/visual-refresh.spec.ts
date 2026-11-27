@@ -292,11 +292,13 @@ test("routed real feedback preserves criteria, detailed comparison and suggested
   await expect(compare).toContainText("Explains why order matters.");
   await expect(compare).toContainText("repeated range scans");
   await expect(page.getByRole("heading", { name: "Limits" })).toBeVisible();
-  await page
-    .getByText("Optional suggested answer · try improving yours first", {
-      exact: true,
-    })
-    .click();
+  const polished = page.getByRole("region", { name: "Sample polished answer" });
+  const suggested = page.getByText("Optional suggested answer · try improving yours first", { exact: true });
+  await expect(polished).toBeVisible();
+  await expect(suggested).toBeVisible();
+  const card = (await polished.boundingBox())!;
+  expect(card.y + card.height).toBeLessThanOrEqual((await suggested.boundingBox())!.y);
+  await suggested.click();
   await expect(page.getByText(/For an equality query/)).toBeVisible();
   await expect(
     page.getByText(/Provider-reported tokens: 15 input/),

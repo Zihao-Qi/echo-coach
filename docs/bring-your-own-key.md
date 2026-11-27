@@ -1,6 +1,6 @@
 # Bring your own Gemini key, and browser speech recognition (public demo)
 
-**Status:** Draft spec. Gemini 4 Neon High: REVISE, APPROVE WITH CHANGES, then APPROVE (all findings applied). Awaiting the owner's approval. Not implemented. Deployment is a separate release task.
+**Status:** Approved by the owner on 2026-11-26 after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). Stage 1 in progress. Not implemented. Deployment is a separate release task.
 
 ## Goal
 

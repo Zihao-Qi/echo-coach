@@ -1,6 +1,6 @@
 # Public demo update to `main` (`539c95b`)
 
-**Status:** Draft spec. Gemini 4 Neon High: REVISE, APPROVE WITH CHANGES, then APPROVE (all findings applied). Awaiting the owner's approval. Nothing has been built or deployed for this update.
+**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). Image built and private preview deployed; waiting for the owner's walk-through. The public service is unchanged. See Record. Nothing has been built or deployed for this update.
 
 ## Goal
 
@@ -28,6 +28,19 @@ The update keeps the demo's safety settings unchanged: no credentials, no paid c
 - IAP's OAuth client is set at the project level (`gcloud iap settings get --project=echo-490312`), so a new Cloud Run service with IAP uses it without Console steps.
 - Artifact Registry `echo-demo` holds one image of about 99 MB. Docker isn't installed on the lead's machine; Cloud Build has Docker.
 
+## Record (2026-11-26)
+
+- **Commit:** `539c95b53dfcb2eb6ea817ba3691d8fcc3d7a09b` (= `origin/main`). Archive 3.28 MB with `.dockerignore`, the 15 clips, the manifest and `deny-egress.mjs`. The archive check's original wording ("no `.env*` or `benchmarks/` entries") was too broad: the archive contains the tracked `.env.example` and `benchmarks/` sources, which are public in the repository and excluded from the image by `.dockerignore`. The wording in step 1 is corrected.
+- **First build** `223f53bf-ddb0-45f6-9f40-3066e8663ed5` stopped at the probe step, before any push. `cloud-sdk:slim` has no `python3` on its PATH. Base pinning, the image build and the fail-closed check had passed. The probe step's image was changed to `python:3.12-slim-bookworm`; nothing else changed.
+- **Build** `04e50096-fed6-4c43-a590-184919b905e7`: SUCCESS (3 min 53 s). Base `node:22-bookworm-slim@sha256:be979e55…bd6eb` pulled by digest. All gate steps passed: the fail-closed start printed the expected message, the probe printed "probe ok", and the logs step printed "logs ok". Image `us-central1-docker.pkg.dev/echo-490312/echo-demo/echo-coach-demo@sha256:f72c59952c1006fd1faa9aa551fd2794bd9fe45528461944ab72211606c7027b` (tag `539c95b`).
+- **Preview:** `echo-coach-demo-preview`, revision `echo-coach-demo-preview-00001-dbd` at 100%, `https://echo-coach-demo-preview-189032457820.us-central1.run.app` (listed in `run.googleapis.com/urls`). Check 3.1 passed:
+  - the digest above and the demo env with no credentials;
+  - maxScale 1 on the revision and the service, no minimum (0), CPU throttled;
+  - `echo-demo-run` (no project roles), IAP enabled;
+  - invoker only the IAP agent, accessor only the owner.
+
+  The first `iap web add-iam-policy-binding` returned without applying (most likely waiting on an interactive prompt); rerun with stdin closed, it applied. Check 3.2 passed: unauthenticated `curl -sSI` returns 302 to `accounts.google.com`.
+
 ## Plan
 
 All `gcloud` commands use `--project echo-490312` and, for Cloud Run, `--region us-central1`. `IMAGE` below means the full reference `us-central1-docker.pkg.dev/echo-490312/echo-demo/echo-coach-demo@sha256:<digest from step 1>`.
@@ -35,7 +48,7 @@ All `gcloud` commands use `--project echo-490312` and, for Cloud Run, `--region 
 ### 1. Build and gate (lead)
 
 1. Confirm `git rev-parse 539c95b` and `git rev-parse origin/main` both print `539c95b53dfcb2eb6ea817ba3691d8fcc3d7a09b`.
-2. Create a temporary directory outside the repository (`work=$(mktemp -d)`) and, from the repository, run `git archive --format=tar.gz -o "$work/src.tgz" 539c95b`. List it and confirm it contains `.dockerignore`, the 15 `.m4a` files, `src/content/questions/audio-manifest.json` and `tests/public-demo/deny-egress.mjs`, and no `.env*`, `client_secret*`, `benchmark-results/` or `benchmarks/` entries.
+2. Create a temporary directory outside the repository (`work=$(mktemp -d)`) and, from the repository, run `git archive --format=tar.gz -o "$work/src.tgz" 539c95b`. List it and confirm it contains `.dockerignore`, the 15 `.m4a` files, `src/content/questions/audio-manifest.json` and `tests/public-demo/deny-egress.mjs`, and no private files: no `.env*` other than the tracked `.env.example`, no `client_secret*` and no `benchmark-results/`. The tracked `benchmarks/` sources are present; `.dockerignore` keeps them and `.env.example` out of the image.
 3. Submit from `$work` with the `cloudbuild.yaml` in the appendix (kept in `$work`): `gcloud builds submit src.tgz --config cloudbuild.yaml --project echo-490312`. Its steps pull and pin CI's base digest, build with `NEXT_PUBLIC_ECHO_PUBLIC_DEMO=true`, then gate the image before anything is pushed:
    - **Fail-closed start:** the image run with no env exits 1 with "Public demo requires matching build and production runtime flags."
    - **Egress tripwire and paths:** the image runs with the production demo env plus CI's `deny-egress.mjs` preload (which writes `PUBLIC_DEMO_UNEXPECTED_OUTBOUND` on any outbound socket attempt). A probe checks:
@@ -180,7 +193,7 @@ steps:
       docker cp tests/public-demo/deny-egress.mjs app:/tmp/deny-egress.mjs
       docker start app
   - id: probe
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    name: python:3.12-slim-bookworm
     script: |
       #!/usr/bin/env bash
       set -euo pipefail

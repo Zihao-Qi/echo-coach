@@ -1,6 +1,6 @@
 # Public demo update to `main` (`539c95b`)
 
-**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). **Launched on 2026-11-26** with the owner's explicit approval: `echo-coach-demo` serves `539c95b`. The preview has been deleted. See Record. Nothing has been built or deployed for this update.
+**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). **Launched on 2026-11-26** with the owner's explicit approval: `echo-coach-demo` serves `539c95b`. The preview has been deleted. See Record.
 
 ## Goal
 
@@ -30,9 +30,9 @@ The update keeps the demo's safety settings unchanged: no credentials, no paid c
 
 ## Record (2026-11-26)
 
-- **Commit:** `539c95b53dfcb2eb6ea817ba3691d8fcc3d7a09b` (= `origin/main`). Archive 3.28 MB with `.dockerignore`, the 15 clips, the manifest and `deny-egress.mjs`. The archive check's original wording ("no `.env*` or `benchmarks/` entries") was too broad: the archive contains the tracked `.env.example` and `benchmarks/` sources, which are public in the repository and excluded from the image by `.dockerignore`. The wording in step 1 is corrected.
+- **Commit:** `539c95b53dfcb2eb6ea817ba3691d8fcc3d7a09b` (= `origin/main`). Archive 3.28 MB with `.dockerignore`, the 15 clips, the manifest and `deny-egress.mjs`. The archive check's original wording ("no `.env*`, `client_secret*`, `benchmark-results/` or `benchmarks/` entries") was too broad. The only matches were the tracked `.env.example` and `benchmarks/` sources, which are public in the repository and excluded from the image by `.dockerignore`. There were no other `.env*`, no `client_secret*` and no `benchmark-results/` entries. The wording in step 1 is corrected.
 - **First build** `223f53bf-ddb0-45f6-9f40-3066e8663ed5` stopped at the probe step, before any push. `cloud-sdk:slim` has no `python3` on its PATH. Base pinning, the image build and the fail-closed check had passed. The probe step's image was changed to `python:3.12-slim-bookworm`; nothing else changed.
-- **Build** `04e50096-fed6-4c43-a590-184919b905e7`: SUCCESS (3 min 53 s). Base `node:22-bookworm-slim@sha256:be979e55…bd6eb` pulled by digest. All gate steps passed: the fail-closed start printed the expected message, the probe printed "probe ok", and the logs step printed "logs ok". Image `us-central1-docker.pkg.dev/echo-490312/echo-demo/echo-coach-demo@sha256:f72c59952c1006fd1faa9aa551fd2794bd9fe45528461944ab72211606c7027b` (tag `539c95b`).
+- **Build** `04e50096-fed6-4c43-a590-184919b905e7`: SUCCESS (3 min 53 s). Base `node:22-bookworm-slim@sha256:be979e5523c76fa4d5ca4ebd3099078f220aa47ec39c48ad5b5df9314debd6eb` pulled by digest. All gate steps passed: the fail-closed start printed the expected message, the probe printed "probe ok", and the logs step printed "logs ok". Image `us-central1-docker.pkg.dev/echo-490312/echo-demo/echo-coach-demo@sha256:f72c59952c1006fd1faa9aa551fd2794bd9fe45528461944ab72211606c7027b` (tag `539c95b`).
 - **Preview:** `echo-coach-demo-preview`, revision `echo-coach-demo-preview-00001-dbd` at 100%, `https://echo-coach-demo-preview-189032457820.us-central1.run.app` (listed in `run.googleapis.com/urls`). Check 3.1 passed:
   - the digest above and the demo env with no credentials;
   - maxScale 1 on the revision and the service, no minimum (0), CPU throttled;
@@ -40,22 +40,29 @@ The update keeps the demo's safety settings unchanged: no credentials, no paid c
   - invoker only the IAP agent, accessor only the owner.
 
   The first `iap web add-iam-policy-binding` returned without applying (most likely waiting on an interactive prompt); rerun with stdin closed, it applied. Check 3.2 passed: unauthenticated `curl -sSI` returns 302 to `accounts.google.com`.
-- **Walk-through (check 3.3):** the owner looked through the preview ("looks good to me"). At the owner's suggestion, Gemini 4 Neon High (browser) then did the scripted walk-through in the owner's browser (task 4; recording kept locally), except pressing Record: the lead's task excluded granting the microphone, so the recorder was checked only by its idle text and by the absence of audio requests. Results:
+- **Walk-through (check 3.3):** the owner looked through the preview and said "looks good to me"; which items the owner checked wasn't itemized. At the owner's suggestion, Gemini 4 Neon High (browser) then did the scripted walk-through in the owner's browser (task 4; recording kept locally). It included `PREVIEW_MARKER_K4M9` in all three submitted practice answers and the mock answer.
+
+  **Not covered by Gemini:**
+  - Pressing Record. The lead's task excluded granting the microphone, so only the recorder's idle text was checked.
+  - The 390 px glance.
+  - The private-window sign-in check. Check 3.2's 302 covers unauthenticated access.
+
+  Results:
   - The notices and disclosures appear as specified.
   - Question audio, polished-answer audio and mock-interview audio played.
   - The retry cue and the next-question shortcut appear; the follow-up has no recording panel.
   - The recap shows both sections with Back to practice at both ends.
-  - The mock round ended early on the review screen.
+  - The mock round was ended on purpose with **End round early** after one answer, reaching the review screen. A full three-question round wasn't completed on the preview; CI covers it.
   - Network: 35 requests, all to the preview host apart from one local browser-extension stylesheet. The only POSTs were three `/api/practice/evaluate` 200s. No request carried audio, and the mock-interview page made no `/api/` request.
   - Snippet: 24 of 25 rows passed, including all 15 clips (206, immutable), the unknown audio paths (404, `private, no-store`), the blocked paths (404) and the rate limit (120 × 200, then 429, `Retry-After 49`).
-- **Encoded audio alias:** the failing row was `/audio/questions/swe-hash-map.eba300ad%2em4a`, which returned 200 with the real file. Cloud Run's Google front end decodes percent-encoded unreserved characters before the request reaches the app. On the current public service, `/practic%65` and `/%70ractice` return 200 and `/leg%61cy` returns 404. The app's allowlist therefore sees the decoded path: an encoded name can only reach an already-public file, and encoded blocked paths stay blocked. The build gate, which talks to the container directly, confirmed that the app itself returns 404 for the encoded form, matching CI. The expectation for this row was wrong for Cloud Run. The public checks in step 4 now expect the decoded file for this alias and add encoded blocked paths.
+- **Encoded audio alias:** the failing row was `/audio/questions/swe-hash-map.eba300ad%2em4a`, which returned 200 with the real file. Cloud Run's Google front end decodes percent-encoded unreserved characters before the request reaches the app. On the then-current `f471413` public service (checked before launch), `/practic%65` and `/%70ractice` return 200 and `/leg%61cy` returns 404. The app's allowlist therefore sees the decoded path: an encoded name can only reach an already-public file, and encoded blocked paths stay blocked. The build gate, which talks to the container directly, confirmed that the app itself returns 404 for the encoded form, matching CI. The expectation for this row was wrong for Cloud Run. The public checks in step 4 now expect the decoded file for this alias and add encoded blocked paths.
 - **Logs (check 3.4):** 214 entries: 202 request logs, 6 stdout lines, audit and system entries. No match for the marker, the feedback notice, `echo-practice-demo`, `GCP_IAP`, `GCP_IAAP` or `cookie`. The two `authorization` matches are the audit log's `authorizationInfo` for the lead's deploy actions. Container output is only Next.js startup lines and one "Public demo refused a request at the rate limit."
 
 - **Launch (owner approved, 2026-11-26 ~19:58 CST):**
   - Before: `spec.traffic` was `latestRevision: true` at 100%.
   - `gcloud run services update --image` created revision `echo-coach-demo-00003-4ks`, which serves 100% with the digest above.
   - The env, service account, scaling, CPU throttling and ingress are identical to the saved copy (`diff`), and `allUsers` is still the only invoker.
-- **Public checks:** all passed.
+- **Public checks** on `https://echo-coach-demo-189032457820.us-central1.run.app`: all passed.
   - `/`, `/practice` and `/mock-interview` return 200 with their headings.
   - All 15 clips: 206, exact `Content-Range`, immutable cache.
   - Both unknown audio paths: 404 with `private, no-store`. The `%2em4a` alias returns the decoded file (42,761 bytes).
@@ -66,6 +73,13 @@ The update keeps the demo's safety settings unchanged: no credentials, no paid c
   - Deleted `echo-coach-demo-preview`; its IAP policy now returns NOT_FOUND. Deleted revision `echo-coach-demo-00001-9jj`.
   - Deleted both builds' source objects and the local work directory. The first deploy's 320 KB source object remains.
   - Kept for rollback: revision `echo-coach-demo-00002-lbj` and the `f471413` image. The registry holds two images, 99 MB and 102 MB.
+- **Open after launch:**
+  - **Recording on the hosted demo is unverified.** Record → Stop → Sample transcript → Use in answer draft has not been exercised on `00003-4ks`: the microphone prompt under Cloud Run, the microphone indicator turning off, and no audio, multipart or transcription requests during recording. CI and the local suites cover it with a fake microphone. A one-minute owner check on the public URL closes it.
+  - The 390 px layout wasn't checked on the hosted build.
+  - The `$5` budget's alert email delivery is still unverified (owner step 4), which matters because audio downloads aren't rate-limited.
+  - Image provenance (Workload Identity Federation) remains a follow-up.
+  - Retiring the original `echo-coach` service, its key and its Firestore data is a separate proposal.
+  - Revision `00002-lbj` and the `f471413` image stay until the owner retires them.
 
 ## Plan
 
@@ -156,7 +170,8 @@ The checks run against the deployed digest: the Cloud Build gate (fail-closed st
 - the egress tripwire during submissions (the gate covers only pages, audio and refusals);
 - session isolation between browsers, and the cookie's `HttpOnly`, `Secure` and `SameSite=Lax` attributes;
 - draft preservation across a restart;
-- the full mobile layout (the walk-through only glances at 390 px).
+- the full mobile layout (not checked on the preview);
+- live microphone recording (not exercised on the preview).
 
 Workload Identity Federation remains a follow-up.
 

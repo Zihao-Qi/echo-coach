@@ -72,7 +72,7 @@ export function QuestionSwitcher({
       ).length;
       return {
         id: q.id,
-        name: q.competency + (n ? ` · ${n} attempt${n === 1 ? "" : "s"}` : ""),
+        name: q.competency + (n ? ` · ${n}\u00a0attempt${n === 1 ? "" : "s"}` : ""),
         option: q.competency + (n ? ` (${n})` : ""),
       };
     });

@@ -1,0 +1,167 @@
+[
+  {
+    "id": "ml-data-leakage",
+    "kind": "answer",
+    "path": "/audio/answers/ml-data-leakage.3f95d65e.m4a",
+    "textSha256": "4913e9a942964b39cdab7d50efc38c68d20f6bf05dfaafaa98970b30dcfdd110",
+    "fileSha256": "3f95d65ebec797e067c893649e108aba0b4d93c3c37fa6359d9fd67a3118d281",
+    "size": 389361,
+    "durationSeconds": 43.68,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Sulafat"
+  },
+  {
+    "id": "ml-imbalanced-metrics",
+    "kind": "answer",
+    "path": "/audio/answers/ml-imbalanced-metrics.b0c1682f.m4a",
+    "textSha256": "e0d3e5d643e2fce7b586596d86fad5b1f431a4a4b25ed65b3ca9947dc1f7a0a7",
+    "fileSha256": "b0c1682f93e11a487e0a797c26f13bab7ba3680cee7aa1c033715f878aad840f",
+    "size": 368951,
+    "durationSeconds": 41.85,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Sulafat"
+  },
+  {
+    "id": "ml-label-audit",
+    "kind": "answer",
+    "path": "/audio/answers/ml-label-audit.8d5d75ae.m4a",
+    "textSha256": "3f1cf393861601e59e536ab6c0744dc7e7f67bc45b76c3439f16ba8a7d5365b0",
+    "fileSha256": "8d5d75aed73f0ed911cc3e72d50ead87b8a16f68677f44804d6cc93771d47a17",
+    "size": 438940,
+    "durationSeconds": 49.35,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Sulafat"
+  },
+  {
+    "id": "swe-debugging",
+    "kind": "answer",
+    "path": "/audio/answers/swe-debugging.4487a795.m4a",
+    "textSha256": "97886fdc82f21bff5ec1613a9f1ee779f034bf7e90d44c2bbbff1e628fa2ff5d",
+    "fileSha256": "4487a795b9a3fd228b83d3facd8cafe02ac62631ffba1aff1cd1d097b8501f15",
+    "size": 379954,
+    "durationSeconds": 42.62,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Sulafat"
+  },
+  {
+    "id": "swe-hash-map",
+    "kind": "answer",
+    "path": "/audio/answers/swe-hash-map.0d429697.m4a",
+    "textSha256": "070d7b17aac23c2915ee1801d8f07fe285209c239e07fe395923fd1d6dcb38df",
+    "fileSha256": "0d429697e6a1bd77c31310a9e12f0b81acb846d74ce52d08dc051c5bef0bd06a",
+    "size": 351210,
+    "durationSeconds": 39.86,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Sulafat"
+  },
+  {
+    "id": "swe-pagination",
+    "kind": "answer",
+    "path": "/audio/answers/swe-pagination.fb999c22.m4a",
+    "textSha256": "f1bc9d76172f1b7ea508db7b151201dc2386634e6552bf5bc2b8a2d459e3cada",
+    "fileSha256": "fb999c22aa076cc02c21a5026998b7db85ad7cf4eced12771ddebf0f4c2860bd",
+    "size": 360507,
+    "durationSeconds": 40.5,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Sulafat"
+  },
+  {
+    "id": "behavioral-clarify",
+    "kind": "question",
+    "path": "/audio/questions/behavioral-clarify.b5f1e5b7.m4a",
+    "textSha256": "f7a8e545550b00475109c977e1e2c31c182d1e556d433fb8cc7e5f69aad025a8",
+    "fileSha256": "b5f1e5b72218a9aea2fb3fadf49dc5b9c3d1a252aba4ecbd37eb1d3942e7e843",
+    "size": 69479,
+    "durationSeconds": 7.77,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "behavioral-project",
+    "kind": "question",
+    "path": "/audio/questions/behavioral-project.2dce7ef3.m4a",
+    "textSha256": "e27808c2649ef837a9a42f94227d43e383001880c851a0982fd725ced9706c73",
+    "fileSha256": "2dce7ef3e23f2ea2b127d2280d8d10380ec52f5c9745e613e30fe8bde5b76c5d",
+    "size": 37685,
+    "durationSeconds": 4.26,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "behavioral-setback",
+    "kind": "question",
+    "path": "/audio/questions/behavioral-setback.98e1cd26.m4a",
+    "textSha256": "87602bb057f362fb070e7639cd1b194c0f55d1bea79c9ce47e39c4b32b36e69b",
+    "fileSha256": "98e1cd266680ed63c3c0be2eea758daee8ffa471fbfd1ee6f8f5da9f4fe754e3",
+    "size": 43483,
+    "durationSeconds": 4.97,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "ml-data-leakage",
+    "kind": "question",
+    "path": "/audio/questions/ml-data-leakage.847d8f72.m4a",
+    "textSha256": "46bebae61f78ddafd23f1ecce3ad6eb0414c2a97efd3d79a24f1049541ba0106",
+    "fileSha256": "847d8f72b0d8e28fc3750a5fea4982160a804401834b2a8c308090b48dd473ed",
+    "size": 50654,
+    "durationSeconds": 5.75,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "ml-imbalanced-metrics",
+    "kind": "question",
+    "path": "/audio/questions/ml-imbalanced-metrics.ef30a0b1.m4a",
+    "textSha256": "0cc2eb4f9e48fbe61d2cc1356aeefd170a14034dd1faa3b02a3d107c38bbe5ee",
+    "fileSha256": "ef30a0b15f88496a2164872f8d7d28288ca3ee64476f26cf5bb0880d4afa7242",
+    "size": 63345,
+    "durationSeconds": 7.12,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "ml-label-audit",
+    "kind": "question",
+    "path": "/audio/questions/ml-label-audit.cacd908f.m4a",
+    "textSha256": "d2b9dfb02bb7b6c44cfc2c166436dd08e73a2169d6a4277d0e595cecdc3be528",
+    "fileSha256": "cacd908fc9f745026615caadbf66e5b6d5533235510731f2e833d93f8525b877",
+    "size": 125911,
+    "durationSeconds": 14.18,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "swe-debugging",
+    "kind": "question",
+    "path": "/audio/questions/swe-debugging.384d9307.m4a",
+    "textSha256": "6f7a1e2033583f1b60ebbeaf66aae55b1625d5f1d4fe9732e1056edebb44e47a",
+    "fileSha256": "384d930778e567cf4485677e8489aad132c397b055aeb8d2e98bc49db7a79e86",
+    "size": 51207,
+    "durationSeconds": 5.75,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "swe-hash-map",
+    "kind": "question",
+    "path": "/audio/questions/swe-hash-map.eba300ad.m4a",
+    "textSha256": "85c9953740e36c0616a92e3dc19a578c925d73009b8f2f0d34b894dafb12cfcd",
+    "fileSha256": "eba300ad85e941b2715ee2197f0584624aa9943a311a01efde1dc7fc8f1d52ec",
+    "size": 42761,
+    "durationSeconds": 4.8,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  },
+  {
+    "id": "swe-pagination",
+    "kind": "question",
+    "path": "/audio/questions/swe-pagination.6bcbc217.m4a",
+    "textSha256": "8d59a6c6e5d8c115310e3e143e9c529b3e5ee7b21cc0bff44b7936be104d4af3",
+    "fileSha256": "6bcbc217feadfda130ca6720093c30985ed41da366d8fd200f8c62516e8a1a96",
+    "size": 116679,
+    "durationSeconds": 13.02,
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Kore"
+  }
+]

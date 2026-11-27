@@ -45,14 +45,9 @@ export default function HomePage() {
                 <Link className="primary w-full sm:w-auto" href="/practice">
                   Start focused practice
                 </Link>
-                {!PUBLIC_DEMO_BUILD && (
-                  <Link
-                    className="action w-full sm:w-auto"
-                    href="/mock-interview"
-                  >
-                    Try a three-question mock interview
-                  </Link>
-                )}
+                <Link className="action w-full sm:w-auto" href="/mock-interview">
+                  Try a three-question mock interview
+                </Link>
               </div>
               <p className="mt-3 text-xs text-muted">
                 {PUBLIC_DEMO_BUILD

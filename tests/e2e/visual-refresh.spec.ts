@@ -26,7 +26,7 @@ async function submit(page: Page, text: string, label = "Get feedback") {
   expect((await response).ok()).toBe(true);
 }
 
-test("typed technical feedback collapses the composer and spans the full width", async ({
+test("typed technical feedback collapses the composer and shows the separate polished sample", async ({
   page,
 }) => {
   await page.goto("/practice?track=swe");
@@ -63,9 +63,11 @@ test("typed technical feedback collapses the composer and spans the full width",
   expect(
     (await card.locator("summary").boundingBox())!.height,
   ).toBeGreaterThanOrEqual(44);
-  expect((await card.boundingBox())!.width).toBe(
-    (await feedback.boundingBox())!.width,
-  );
+  const sample = feedback.getByRole("region", { name: "Sample polished answer", exact: true });
+  await expect(sample).toBeVisible();
+  await expect(sample.getByText("constant time on average", { exact: true })).toHaveJSProperty("tagName", "STRONG");
+  const mainBox = (await card.boundingBox())!;
+  expect((await sample.boundingBox())!.x).toBeGreaterThan(mainBox.x + mainBox.width);
   await edit(page).click();
   await expect(answer(page)).toBeFocused();
   await expect(answer(page)).toHaveValue(draft);
@@ -290,11 +292,13 @@ test("routed real feedback preserves criteria, detailed comparison and suggested
   await expect(compare).toContainText("Explains why order matters.");
   await expect(compare).toContainText("repeated range scans");
   await expect(page.getByRole("heading", { name: "Limits" })).toBeVisible();
-  await page
-    .getByText("Optional suggested answer · try improving yours first", {
-      exact: true,
-    })
-    .click();
+  const polished = page.getByRole("region", { name: "Sample polished answer" });
+  const suggested = page.getByText("Optional suggested answer · try improving yours first", { exact: true });
+  await expect(polished).toBeVisible();
+  await expect(suggested).toBeVisible();
+  const card = (await polished.boundingBox())!;
+  expect(card.y + card.height).toBeLessThanOrEqual((await suggested.boundingBox())!.y);
+  await suggested.click();
   await expect(page.getByText(/For an equality query/)).toBeVisible();
   await expect(
     page.getByText(/Provider-reported tokens: 15 input/),

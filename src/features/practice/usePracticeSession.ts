@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PUBLIC_DEMO_BUILD } from "../../infrastructure/config/public-demo";
 import { starterQuestions } from "../../content/questions/starter-bank";
 import { orderAttempts } from "../../domain/interview/attempt-order";
@@ -36,8 +36,13 @@ export function usePracticeSession({
   access: ReturnType<typeof usePracticeAccess>;
   initialTrack: InterviewTrack;
 }) {
-  const history = usePracticeHistory(access.headers);
   const [selectedAttempt, setSelectedAttempt] = useState<AnswerAttempt | null>(null);
+  const [submissionCache, setSubmissionCache] = useState<Partial<Record<string, SubmissionCache>>>({});
+  const clearAttemptLineage = useCallback(() => {
+    setSelectedAttempt(null);
+    setSubmissionCache({});
+  }, []);
+  const history = usePracticeHistory(access.headers, clearAttemptLineage);
 
   const loadedAttempts = history.records
     .map(completedAttempt)
@@ -61,7 +66,6 @@ export function usePracticeSession({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusAnnouncement, setStatusAnnouncement] = useState<string>("");
-  const [submissionCache, setSubmissionCache] = useState<Partial<Record<string, SubmissionCache>>>({});
 
   const requestRef = useRef<AbortController | null>(null);
   const questionHeadingRef = useRef<HTMLHeadingElement | null>(null);
@@ -409,8 +413,7 @@ export function usePracticeSession({
           const fresh = await fetch("/api/practice/access", { signal: controller.signal });
           if (!fresh.ok) throw new Error("The demo session expired and could not be restarted yet. Your draft is still here.");
         }
-        setSelectedAttempt(null);
-        setSubmissionCache({});
+        clearAttemptLineage();
         const message = target.kind === "followup"
           ? "The original answer for this follow-up is no longer available. Your draft is still here; return to the original question to start again."
           : "The demo session reset. Your draft is still here. Submit again when you’re ready.";

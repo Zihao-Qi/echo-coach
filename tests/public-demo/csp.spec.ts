@@ -120,6 +120,11 @@ test("sample practice, playback, recording and the mock interview report no CSP 
   });
   const violations: string[] = [];
   const consoleErrors = watchCsp(page);
+  await page.addInitScript(() => {
+    const host = window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    host.SpeechRecognition = undefined;
+    host.webkitSpeechRecognition = undefined;
+  });
   await arm(page);
   const draft = "I compared two fictional sketches and chose the simpler one because the deadline was one day away.";
 
@@ -161,7 +166,12 @@ test("sample practice, playback, recording and the mock interview report no CSP 
   await drain(page, violations);
 
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Practice", exact: true }).click();
-  await expect(page.getByLabel("Your answer", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/practice$/);
+  const answer = page.getByLabel("Your answer", { exact: true });
+  const edit = page.getByRole("button", { name: "Edit answer", exact: true });
+  await expect(answer.or(edit)).toBeVisible();
+  if (await edit.isVisible()) await edit.click();
+  await expect(answer).toBeVisible();
   await drain(page, violations);
 
   expect(violations).toEqual([]);

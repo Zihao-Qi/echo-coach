@@ -53,6 +53,7 @@ interface SpeechSession {
   questionId: string;
   recognition: BrowserSpeechRecognition;
   draft: SpeechDraft;
+  started: boolean;
   stopRequested: boolean;
   errored: boolean;
   settled: boolean;
@@ -149,6 +150,7 @@ export function useVoiceRecording({
   const stopButtonRef = useRef<HTMLButtonElement | null>(null);
   const transcriptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const speechRef = useRef<SpeechSession | null>(null);
+  const ownedQuestionRef = useRef<string | null>(null);
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mode, setMode] = useState<VoiceCaptureMode>(PUBLIC_DEMO_BUILD ? "sample" : "server");
   const modeRef = useRef(mode);
@@ -233,6 +235,7 @@ export function useVoiceRecording({
         jobRef.current.wavBytes.fill(0);
       }
       jobRef.current = null;
+      ownedQuestionRef.current = null;
       updatePhase("idle");
       setElapsedSeconds(0);
       setDurationSeconds(0);
@@ -257,15 +260,14 @@ export function useVoiceRecording({
         jobRef.current.wavBytes.fill(0);
       }
       jobRef.current = null;
+      ownedQuestionRef.current = null;
     };
   }, [releaseActiveMedia]);
 
   // If activeQuestionId changes externally, invalidate any stale voice state bound to an old questionId
   useEffect(() => {
-    if (
-      (speechRef.current && speechRef.current.questionId !== activeQuestionId) ||
-      (jobRef.current && jobRef.current.questionId !== activeQuestionId)
-    ) {
+    const ownedQuestion = speechRef.current?.questionId ?? ownedQuestionRef.current ?? jobRef.current?.questionId;
+    if (ownedQuestion && ownedQuestion !== activeQuestionId) {
       invalidateAndRelease();
     } else if (phaseRef.current === "error") {
       updatePhase("idle");
@@ -292,6 +294,7 @@ export function useVoiceRecording({
     if (generationRef.current !== session.generation || activeQuestionIdRef.current !== session.questionId) return;
     session.settled = true;
     if (speechRef.current === session) speechRef.current = null;
+    ownedQuestionRef.current = session.questionId;
     clearRecordingTimers();
     const text = (session.draft.finals + session.draft.interim).slice(0, SPEECH_TRANSCRIPT_LIMIT);
     setTranscriptText(text);
@@ -299,9 +302,6 @@ export function useVoiceRecording({
     setErrorRecovery("none");
     updatePhase("review");
     setStatusAnnouncement(status);
-    requestAnimationFrame(() => {
-      if (generationRef.current === session.generation) transcriptTextareaRef.current?.focus();
-    });
   }, [clearRecordingTimers, updatePhase]);
 
   const startBrowserSpeech = useCallback(() => {
@@ -338,6 +338,7 @@ export function useVoiceRecording({
       questionId,
       recognition,
       draft: { finals: "", interim: "" },
+      started: false,
       stopRequested: false,
       errored: false,
       settled: false,
@@ -360,23 +361,23 @@ export function useVoiceRecording({
       setStatusAnnouncement("Finishing…");
       finishTimerRef.current = setTimeout(() => {
         if (speechRef.current !== session || session.settled || session.errored) return;
-        // abort() can report "aborted" and end before this function continues.
+        commitSpeech(session, "Transcript ready to edit.");
         session.ownAbort = true;
         try {
           recognition.abort();
         } catch {
-          // The words received so far are still committed below.
+          // The transcript is already settled, so a late abort notification cannot replace it.
         }
-        commitSpeech(session, "Transcript ready to edit.");
       }, SPEECH_FINISH_TIMEOUT_MS);
       try {
         recognition.stop();
       } catch {
+        commitSpeech(session, "Transcript ready to edit.");
         session.ownAbort = true;
         try {
           recognition.abort();
         } catch {
-          // commitSpeech still runs from the finish timer.
+          // Already settled above.
         }
       }
     };
@@ -397,6 +398,7 @@ export function useVoiceRecording({
         }
         return;
       }
+      session.started = true;
       const startedAt = Date.now();
       updatePhase("recording");
       setStatusAnnouncement("Recording in progress. Maximum 2 minutes.");
@@ -418,7 +420,7 @@ export function useVoiceRecording({
         const result = event.results[index];
         return { isFinal: result.isFinal, transcript: result[0]?.transcript ?? "" };
       });
-      setTranscriptText(applySpeechResult(session.draft, event.resultIndex, results));
+      setTranscriptText(applySpeechResult(session.draft, results));
     };
 
     recognition.onerror = (event) => {
@@ -444,6 +446,18 @@ export function useVoiceRecording({
     recognition.onend = () => {
       if (speechRef.current !== session || session.errored || session.settled) return;
       if (generationRef.current !== generation || activeQuestionIdRef.current !== questionId) return;
+      if (!session.started) {
+        session.errored = true;
+        if (speechRef.current === session) speechRef.current = null;
+        ownedQuestionRef.current = null;
+        clearRecordingTimers();
+        setTranscriptText("");
+        setError("Speech recognition couldn't start.");
+        setErrorRecovery("none");
+        updatePhase("error");
+        setStatusAnnouncement("Speech recognition couldn't start.");
+        return;
+      }
       commitSpeech(session, session.stopRequested ? "Transcript ready to edit." : "Recording stopped.");
     };
 
@@ -702,11 +716,9 @@ export function useVoiceRecording({
           setStatusAnnouncement("Microphone disconnected.");
         } else {
           setTranscriptText(sampleTranscript);
+          ownedQuestionRef.current = capturedQuestionId;
           updatePhase("review");
           setStatusAnnouncement("Sample transcript ready to edit. This demo does not recognize speech.");
-          requestAnimationFrame(() => {
-            if (generationRef.current === jobGeneration) transcriptTextareaRef.current?.focus();
-          });
         }
         return;
       }
@@ -945,15 +957,13 @@ export function useVoiceRecording({
           setTranscriptText(text);
           setError(null);
           setErrorRecovery("none");
+          ownedQuestionRef.current = capturedQuestionId;
           updatePhase("review");
           setStatusAnnouncement(
             text.trim().length === 0
               ? "Demo transcript returned empty text. Edit below or re-record."
               : "Demo transcript ready for review. Edit if needed, then select Use confirmed transcript.",
           );
-          requestAnimationFrame(() => {
-            transcriptTextareaRef.current?.focus();
-          });
           return;
         }
 
@@ -1076,6 +1086,10 @@ export function useVoiceRecording({
 
   const applyConfirmedTranscript = useCallback(() => {
     if (phaseRef.current !== "review") return;
+    if (ownedQuestionRef.current && ownedQuestionRef.current !== activeQuestionIdRef.current) {
+      invalidateAndRelease();
+      return;
+    }
     if (transcriptText.trim().length === 0) return;
 
     const currentDraft = getCurrentDraft();

@@ -10,6 +10,20 @@ const button =
 const primaryButton =
   "rounded-xl border border-line-strong bg-ink px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-ink-hover disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
+function LiveWords({ text }: { text: string }) {
+  return (
+    <div className="mt-3">
+      <p id="live-words-label" className="text-xs font-bold text-ink">Words so far</p>
+      <p
+        aria-labelledby="live-words-label"
+        className="mt-1 max-h-24 overflow-y-auto rounded-xl bg-white p-3 text-sm leading-6 break-words text-body [overflow-wrap:anywhere]"
+      >
+        {text || "Listening…"}
+      </p>
+    </div>
+  );
+}
+
 interface VoiceAnswerPanelProps {
   transcriptionAccess: PracticeTranscriptionAccess;
   mode?: VoiceCaptureMode;
@@ -120,41 +134,48 @@ export function VoiceAnswerPanel({
       )}
 
       {phase === "recording" && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-          <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden="true"
-              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-danger motion-reduce:animate-none"
-            />
-            <p className="text-xs font-semibold text-ink">
-              Recording:{" "}
-              <span className="font-mono">
-                {formatVoiceSeconds(elapsedSeconds)} / {formatVoiceSeconds(AUDIO_MAX_SECONDS)}
-              </span>
-            </p>
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-danger motion-reduce:animate-none"
+              />
+              <p className="text-xs font-semibold text-ink">
+                Recording:{" "}
+                <span className="font-mono">
+                  {formatVoiceSeconds(elapsedSeconds)} / {formatVoiceSeconds(AUDIO_MAX_SECONDS)}
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                ref={stopButtonRef}
+                type="button"
+                className={primaryButton}
+                onClick={stopRecording}
+              >
+                Stop recording
+              </button>
+              <button type="button" className={button} onClick={() => discardVoice(true)}>
+                Discard
+              </button>
+            </div>
           </div>
-          {mode === "browser-speech" && transcriptText && (
-            <p className="basis-full text-sm leading-6 text-body">{transcriptText}</p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button
-              ref={stopButtonRef}
-              type="button"
-              className={primaryButton}
-              onClick={stopRecording}
-            >
-              Stop recording
-            </button>
-            <button type="button" className={button} onClick={() => discardVoice(true)}>
-              Discard
-            </button>
-          </div>
+          {mode === "browser-speech" && <LiveWords text={transcriptText} />}
         </div>
       )}
 
-      {phase === "finishing" && (
+      {phase === "finishing" && mode === "browser-speech" && (
         <div className="mt-3 border-t border-line pt-3">
-          <p className="text-xs font-medium text-body">Finishing…</p>
+          <p className="flex items-center gap-2 text-xs font-medium text-body">
+            <span
+              aria-hidden="true"
+              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-marigold motion-reduce:animate-none"
+            />
+            Finishing…
+          </p>
+          <LiveWords text={transcriptText} />
         </div>
       )}
 
@@ -324,7 +345,7 @@ export function VoiceAnswerPanel({
               <button
                 type="button"
                 disabled={evaluationPending}
-                className={button}
+                className={mode === "browser-speech" ? primaryButton : button}
                 onClick={() => void startRecording()}
               >
                 {hasRetainedAudio ? "Re-record" : "Try recording again"}
@@ -333,7 +354,7 @@ export function VoiceAnswerPanel({
             <button
               type="button"
               disabled={evaluationPending}
-              className={button}
+              className={mode === "browser-speech" ? "rounded-xl px-3.5 py-2 text-xs font-semibold text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink" : button}
               onClick={() => discardVoice(true)}
             >
               {hasRetainedAudio ? "Discard recording" : "Dismiss"}

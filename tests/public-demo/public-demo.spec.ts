@@ -21,9 +21,9 @@ async function expectPublicNavigation(page: Page) {
 
 async function openPractice(page: Page) {
   await page.addInitScript(() => {
-    const host = window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
-    host.SpeechRecognition = undefined;
-    host.webkitSpeechRecognition = undefined;
+    for (const key of ["SpeechRecognition", "webkitSpeechRecognition"] as const) {
+      Object.defineProperty(window, key, { configurable: true, writable: true, value: undefined });
+    }
   });
   const external: string[] = [];
   await page.route("**/*", (route) => {

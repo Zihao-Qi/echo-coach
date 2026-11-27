@@ -10,14 +10,13 @@ export interface SpeechResultChunk {
 
 export const SPEECH_TRANSCRIPT_LIMIT = 10_000;
 
-// `results` is the recognizer's whole list, not the slice after resultIndex.
-// Unchanged interim entries before resultIndex stay, and a shorter list replaces the previous one.
+// A recognition event's result list is the full snapshot. Rebuilding from it
+// matches keeping every entry before the changed index and replacing the tail,
+// including when the list shrinks.
 export function applySpeechResult(
   draft: SpeechDraft,
-  resultIndex: number,
   results: ArrayLike<SpeechResultChunk>,
 ): string {
-  void resultIndex;
   let finals = "";
   let interim = "";
   for (let index = 0; index < results.length; index += 1) {

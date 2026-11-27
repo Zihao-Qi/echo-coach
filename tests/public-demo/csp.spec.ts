@@ -121,9 +121,9 @@ test("sample practice, playback, recording and the mock interview report no CSP 
   const violations: string[] = [];
   const consoleErrors = watchCsp(page);
   await page.addInitScript(() => {
-    const host = window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
-    host.SpeechRecognition = undefined;
-    host.webkitSpeechRecognition = undefined;
+    for (const key of ["SpeechRecognition", "webkitSpeechRecognition"] as const) {
+      Object.defineProperty(window, key, { configurable: true, writable: true, value: undefined });
+    }
   });
   await arm(page);
   const draft = "I compared two fictional sketches and chose the simpler one because the deadline was one day away.";

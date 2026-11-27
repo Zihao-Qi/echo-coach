@@ -4,18 +4,18 @@ import { applySpeechResult, type SpeechDraft } from "../../src/features/practice
 
 test("speech results keep finals and replace repeated interim text", () => {
   const draft: SpeechDraft = { finals: "", interim: "" };
-  assert.equal(applySpeechResult(draft, 0, [{ isFinal: false, transcript: "hel" }]), "hel");
-  assert.equal(applySpeechResult(draft, 0, [{ isFinal: false, transcript: "hello" }]), "hello");
-  assert.equal(applySpeechResult(draft, 0, [{ isFinal: true, transcript: "hello " }]), "hello ");
+  assert.equal(applySpeechResult(draft, [{ isFinal: false, transcript: "hel" }]), "hel");
+  assert.equal(applySpeechResult(draft, [{ isFinal: false, transcript: "hello" }]), "hello");
+  assert.equal(applySpeechResult(draft, [{ isFinal: true, transcript: "hello " }]), "hello ");
   assert.equal(
-    applySpeechResult(draft, 1, [
+    applySpeechResult(draft, [
       { isFinal: true, transcript: "hello " },
       { isFinal: false, transcript: "there" },
     ]),
     "hello there",
   );
   assert.equal(
-    applySpeechResult(draft, 1, [
+    applySpeechResult(draft, [
       { isFinal: true, transcript: "hello " },
       { isFinal: true, transcript: "there" },
     ]),
@@ -23,7 +23,6 @@ test("speech results keep finals and replace repeated interim text", () => {
   );
   const capped = applySpeechResult(
     { finals: "stale", interim: "stale" },
-    0,
     [{ isFinal: true, transcript: `${"x".repeat(9_995)}0123456789` }],
   );
   assert.equal(capped.length, 10_000);
@@ -33,20 +32,20 @@ test("speech results keep finals and replace repeated interim text", () => {
 
 test("an unchanged interim prefix survives a later resultIndex and a shorter list replaces the snapshot", () => {
   const draft: SpeechDraft = { finals: "", interim: "" };
-  assert.equal(applySpeechResult(draft, 0, [
+  assert.equal(applySpeechResult(draft, [
     { isFinal: false, transcript: "one" },
     { isFinal: false, transcript: "two" },
   ]), "onetwo");
-  assert.equal(applySpeechResult(draft, 1, [
+  assert.equal(applySpeechResult(draft, [
     { isFinal: false, transcript: "one" },
     { isFinal: false, transcript: "three" },
   ]), "onethree");
-  assert.equal(applySpeechResult(draft, 0, [
+  assert.equal(applySpeechResult(draft, [
     { isFinal: false, transcript: "one" },
     { isFinal: false, transcript: "three" },
     { isFinal: false, transcript: "four" },
   ]), "onethreefour");
-  assert.equal(applySpeechResult(draft, 1, [
+  assert.equal(applySpeechResult(draft, [
     { isFinal: false, transcript: "one" },
   ]), "one");
   assert.equal(draft.finals, "");

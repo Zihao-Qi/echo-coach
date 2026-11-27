@@ -167,11 +167,9 @@ test("sample practice, playback, recording and the mock interview report no CSP 
 
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Practice", exact: true }).click();
   await expect(page).toHaveURL(/\/practice$/);
-  const answer = page.getByLabel("Your answer", { exact: true });
-  const edit = page.getByRole("button", { name: "Edit answer", exact: true });
-  await expect(answer.or(edit)).toBeVisible();
-  if (await edit.isVisible()) await edit.click();
-  await expect(answer).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sample feedback", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Edit answer", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Your answer", exact: true })).toBeVisible();
   await drain(page, violations);
 
   expect(violations).toEqual([]);

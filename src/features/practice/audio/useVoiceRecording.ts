@@ -7,11 +7,15 @@ import { stopDemoAudio } from "../../AudioPlayer";
 import { AUDIO_MAX_SECONDS } from "../../../domain/audio/canonical-wav";
 import type { PracticeTranscriptionAccess } from "../usePracticeAccess";
 import { MAX_ENCODED_RECORDING_BYTES, normalizeRecording } from "./normalize-recording";
+import { applySpeechResult, SPEECH_TRANSCRIPT_LIMIT, type SpeechDraft } from "./speech-results";
+
+export type VoiceCaptureMode = "server" | "sample" | "browser-speech";
 
 export type VoiceRecordingPhase =
   | "idle"
   | "requesting_permission"
   | "recording"
+  | "finishing"
   | "normalizing"
   | "ready_to_transcribe"
   | "transcribing"
@@ -29,6 +33,63 @@ interface CapturedVoiceJob {
 }
 
 const CLIENT_TRANSCRIPTION_TIMEOUT_MS = 60_000;
+const SPEECH_FINISH_TIMEOUT_MS = 3_000;
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onresult: ((event: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0?: { transcript?: string } }> }) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface SpeechSession {
+  generation: number;
+  questionId: string;
+  recognition: BrowserSpeechRecognition;
+  draft: SpeechDraft;
+  started: boolean;
+  stopRequested: boolean;
+  errored: boolean;
+  settled: boolean;
+  ownAbort: boolean;
+  requestStop: () => void;
+}
+
+function speechRecognitionConstructor(): (new () => BrowserSpeechRecognition) | undefined {
+  if (typeof window === "undefined") return undefined;
+  const host = window as Window & {
+    SpeechRecognition?: new () => BrowserSpeechRecognition;
+    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+  };
+  const ctor = host.SpeechRecognition ?? host.webkitSpeechRecognition;
+  return typeof ctor === "function" ? ctor : undefined;
+}
+
+function speechErrorMessage(code: string | undefined) {
+  if (code === "no-speech") return "No speech was heard.";
+  if (code === "not-allowed" || code === "service-not-allowed") return "Microphone access was denied.";
+  if (code === "network") return "Speech recognition couldn't reach its service.";
+  if (code === "audio-capture") return "No microphone was found.";
+  return "Speech recognition failed. You can keep typing.";
+}
+
+function replacePrompt(mode: VoiceCaptureMode) {
+  if (mode === "browser-speech") return "Replace your current typed answer draft with this transcript?";
+  if (mode === "sample") return "Replace your current typed answer draft with this sample transcript?";
+  return "Replace your current typed answer draft with this confirmed transcript?";
+}
+
+function appliedStatus(mode: VoiceCaptureMode) {
+  if (mode === "browser-speech") return "Applied transcript to your answer draft.";
+  if (mode === "sample") return "Applied sample transcript to your answer draft.";
+  return "Applied confirmed transcript to your answer draft.";
+}
 
 function stopMediaStreamTracks(stream: MediaStream | null | undefined) {
   if (!stream) return;
@@ -88,6 +149,22 @@ export function useVoiceRecording({
 
   const stopButtonRef = useRef<HTMLButtonElement | null>(null);
   const transcriptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const speechRef = useRef<SpeechSession | null>(null);
+  const ownedQuestionRef = useRef<string | null>(null);
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mode, setMode] = useState<VoiceCaptureMode>(PUBLIC_DEMO_BUILD ? "sample" : "server");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+
+  useEffect(() => {
+    if (!PUBLIC_DEMO_BUILD) return;
+    setMode(speechRecognitionConstructor() ? "browser-speech" : "sample");
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "review") return;
+    transcriptTextareaRef.current?.focus();
+  }, [phase]);
 
   const updatePhase = useCallback((next: VoiceRecordingPhase) => {
     phaseRef.current = next;
@@ -107,10 +184,25 @@ export function useVoiceRecording({
       clearTimeout(stopDeadlineRef.current);
       stopDeadlineRef.current = null;
     }
+    if (finishTimerRef.current !== null) {
+      clearTimeout(finishTimerRef.current);
+      finishTimerRef.current = null;
+    }
   }, []);
 
   const releaseActiveMedia = useCallback(() => {
     clearRecordingTimers();
+    const speech = speechRef.current;
+    speechRef.current = null;
+    if (speech) {
+      speech.settled = true;
+      speech.ownAbort = true;
+      try {
+        speech.recognition.abort();
+      } catch {
+        // Already ended.
+      }
+    }
     const recorder = recorderRef.current;
     recorderRef.current = null;
     if (recorder) {
@@ -143,6 +235,7 @@ export function useVoiceRecording({
         jobRef.current.wavBytes.fill(0);
       }
       jobRef.current = null;
+      ownedQuestionRef.current = null;
       updatePhase("idle");
       setElapsedSeconds(0);
       setDurationSeconds(0);
@@ -167,12 +260,14 @@ export function useVoiceRecording({
         jobRef.current.wavBytes.fill(0);
       }
       jobRef.current = null;
+      ownedQuestionRef.current = null;
     };
   }, [releaseActiveMedia]);
 
   // If activeQuestionId changes externally, invalidate any stale voice state bound to an old questionId
   useEffect(() => {
-    if (jobRef.current && jobRef.current.questionId !== activeQuestionId) {
+    const ownedQuestion = speechRef.current?.questionId ?? ownedQuestionRef.current ?? jobRef.current?.questionId;
+    if (ownedQuestion && ownedQuestion !== activeQuestionId) {
       invalidateAndRelease();
     } else if (phaseRef.current === "error") {
       updatePhase("idle");
@@ -184,6 +279,7 @@ export function useVoiceRecording({
   const isHardLocked =
     phase === "requesting_permission" ||
     phase === "recording" ||
+    phase === "finishing" ||
     phase === "normalizing" ||
     phase === "transcribing";
 
@@ -193,18 +289,208 @@ export function useVoiceRecording({
     phase === "review" ||
     (phase === "error" && (hasRetainedAudio || transcriptText.trim().length > 0));
 
-  const startRecording = useCallback(async () => {
-    if (PUBLIC_DEMO_BUILD ? !sampleTranscript : !transcriptionAccess.available || transcriptionAccess.mode === "disabled") {
+  const commitSpeech = useCallback((session: SpeechSession, status: string) => {
+    if (speechRef.current !== session || session.errored || session.settled) return;
+    if (generationRef.current !== session.generation || activeQuestionIdRef.current !== session.questionId) return;
+    session.settled = true;
+    if (speechRef.current === session) speechRef.current = null;
+    ownedQuestionRef.current = session.questionId;
+    clearRecordingTimers();
+    const text = (session.draft.finals + session.draft.interim).slice(0, SPEECH_TRANSCRIPT_LIMIT);
+    setTranscriptText(text);
+    setError(null);
+    setErrorRecovery("none");
+    updatePhase("review");
+    setStatusAnnouncement(status);
+  }, [clearRecordingTimers, updatePhase]);
+
+  const startBrowserSpeech = useCallback(() => {
+    stopDemoAudio();
+    const Ctor = speechRecognitionConstructor();
+    if (!Ctor) return;
+    generationRef.current += 1;
+    const generation = generationRef.current;
+    const questionId = activeQuestionIdRef.current;
+    if (jobRef.current?.wavBytes) jobRef.current.wavBytes.fill(0);
+    jobRef.current = null;
+    setElapsedSeconds(0);
+    setDurationSeconds(0);
+    setTranscriptText("");
+    setError(null);
+    setErrorRecovery("none");
+    updatePhase("requesting_permission");
+    setStatusAnnouncement("Requesting microphone permission…");
+
+    let recognition: BrowserSpeechRecognition;
+    try {
+      recognition = new Ctor();
+    } catch {
+      updatePhase("error");
+      setError("Speech recognition couldn't start.");
+      setStatusAnnouncement("Speech recognition couldn't start.");
       return;
     }
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    const session: SpeechSession = {
+      generation,
+      questionId,
+      recognition,
+      draft: { finals: "", interim: "" },
+      started: false,
+      stopRequested: false,
+      errored: false,
+      settled: false,
+      ownAbort: false,
+      requestStop: () => undefined,
+    };
+    session.requestStop = () => {
+      if (speechRef.current !== session || session.stopRequested || session.errored || session.settled) return;
+      if (phaseRef.current !== "recording") return;
+      session.stopRequested = true;
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (stopDeadlineRef.current !== null) {
+        clearTimeout(stopDeadlineRef.current);
+        stopDeadlineRef.current = null;
+      }
+      updatePhase("finishing");
+      setStatusAnnouncement("Finishing…");
+      finishTimerRef.current = setTimeout(() => {
+        if (speechRef.current !== session || session.settled || session.errored) return;
+        commitSpeech(session, "Transcript ready to edit.");
+        session.ownAbort = true;
+        try {
+          recognition.abort();
+        } catch {
+          // The transcript is already settled, so a late abort notification cannot replace it.
+        }
+      }, SPEECH_FINISH_TIMEOUT_MS);
+      try {
+        recognition.stop();
+      } catch {
+        commitSpeech(session, "Transcript ready to edit.");
+        session.ownAbort = true;
+        try {
+          recognition.abort();
+        } catch {
+          // Already settled above.
+        }
+      }
+    };
+    speechRef.current = session;
+
+    recognition.onstart = () => {
+      if (
+        speechRef.current !== session ||
+        generationRef.current !== generation ||
+        activeQuestionIdRef.current !== questionId ||
+        phaseRef.current !== "requesting_permission"
+      ) {
+        session.ownAbort = true;
+        try {
+          recognition.abort();
+        } catch {
+          // The recognizer already ended.
+        }
+        return;
+      }
+      session.started = true;
+      const startedAt = Date.now();
+      updatePhase("recording");
+      setStatusAnnouncement("Recording in progress. Maximum 2 minutes.");
+      requestAnimationFrame(() => {
+        if (speechRef.current === session) stopButtonRef.current?.focus();
+      });
+      timerRef.current = setInterval(() => {
+        if (speechRef.current !== session || phaseRef.current !== "recording") return;
+        setElapsedSeconds(Math.min(AUDIO_MAX_SECONDS, Math.floor((Date.now() - startedAt) / 1000)));
+      }, 250);
+      stopDeadlineRef.current = setTimeout(() => {
+        session.requestStop();
+      }, AUDIO_MAX_SECONDS * 1000);
+    };
+
+    recognition.onresult = (event) => {
+      if (speechRef.current !== session || session.settled || session.errored) return;
+      const results = Array.from({ length: event.results.length }, (_, index) => {
+        const result = event.results[index];
+        return { isFinal: result.isFinal, transcript: result[0]?.transcript ?? "" };
+      });
+      setTranscriptText(applySpeechResult(session.draft, results));
+    };
+
+    recognition.onerror = (event) => {
+      if (speechRef.current !== session || session.errored || session.settled) return;
+      if (event.error === "aborted" && session.ownAbort) return;
+      session.errored = true;
+      if (speechRef.current === session) speechRef.current = null;
+      clearRecordingTimers();
+      const message = speechErrorMessage(event.error);
+      setTranscriptText("");
+      setError(message);
+      setErrorRecovery("none");
+      updatePhase("error");
+      setStatusAnnouncement(message);
+      session.ownAbort = true;
+      try {
+        recognition.abort();
+      } catch {
+        // The error already released the session.
+      }
+    };
+
+    recognition.onend = () => {
+      if (speechRef.current !== session || session.errored || session.settled) return;
+      if (generationRef.current !== generation || activeQuestionIdRef.current !== questionId) return;
+      if (!session.started) {
+        session.errored = true;
+        if (speechRef.current === session) speechRef.current = null;
+        ownedQuestionRef.current = null;
+        clearRecordingTimers();
+        setTranscriptText("");
+        setError("Speech recognition couldn't start.");
+        setErrorRecovery("none");
+        updatePhase("error");
+        setStatusAnnouncement("Speech recognition couldn't start.");
+        return;
+      }
+      commitSpeech(session, session.stopRequested ? "Transcript ready to edit." : "Recording stopped.");
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      speechRef.current = null;
+      session.settled = true;
+      clearRecordingTimers();
+      updatePhase("error");
+      setError("Speech recognition couldn't start.");
+      setStatusAnnouncement("Speech recognition couldn't start.");
+    }
+  }, [clearRecordingTimers, commitSpeech, updatePhase]);
+
+  const startRecording = useCallback(async () => {
     if (
       phaseRef.current === "requesting_permission" ||
       phaseRef.current === "recording" ||
+      phaseRef.current === "finishing" ||
       phaseRef.current === "normalizing" ||
       phaseRef.current === "transcribing" ||
       recorderRef.current !== null ||
-      streamRef.current !== null
+      streamRef.current !== null ||
+      speechRef.current !== null
     ) {
+      return;
+    }
+    if (modeRef.current === "browser-speech") {
+      startBrowserSpeech();
+      return;
+    }
+    if (PUBLIC_DEMO_BUILD ? !sampleTranscript : !transcriptionAccess.available || transcriptionAccess.mode === "disabled") {
       return;
     }
 
@@ -430,11 +716,9 @@ export function useVoiceRecording({
           setStatusAnnouncement("Microphone disconnected.");
         } else {
           setTranscriptText(sampleTranscript);
+          ownedQuestionRef.current = capturedQuestionId;
           updatePhase("review");
           setStatusAnnouncement("Sample transcript ready to edit. This demo does not recognize speech.");
-          requestAnimationFrame(() => {
-            if (generationRef.current === jobGeneration) transcriptTextareaRef.current?.focus();
-          });
         }
         return;
       }
@@ -553,10 +837,15 @@ export function useVoiceRecording({
         }
       }
     }, AUDIO_MAX_SECONDS * 1000);
-  }, [clearRecordingTimers, readCurrentPhase, sampleTranscript, transcriptionAccess.available, transcriptionAccess.mode, updatePhase]);
+  }, [clearRecordingTimers, readCurrentPhase, sampleTranscript, startBrowserSpeech, transcriptionAccess.available, transcriptionAccess.mode, updatePhase]);
 
   const stopRecording = useCallback(() => {
     if (phaseRef.current !== "recording") return;
+    const speech = speechRef.current;
+    if (speech) {
+      speech.requestStop();
+      return;
+    }
     clearRecordingTimers();
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== "inactive") {
@@ -668,15 +957,13 @@ export function useVoiceRecording({
           setTranscriptText(text);
           setError(null);
           setErrorRecovery("none");
+          ownedQuestionRef.current = capturedQuestionId;
           updatePhase("review");
           setStatusAnnouncement(
             text.trim().length === 0
               ? "Demo transcript returned empty text. Edit below or re-record."
               : "Demo transcript ready for review. Edit if needed, then select Use confirmed transcript.",
           );
-          requestAnimationFrame(() => {
-            transcriptTextareaRef.current?.focus();
-          });
           return;
         }
 
@@ -799,6 +1086,10 @@ export function useVoiceRecording({
 
   const applyConfirmedTranscript = useCallback(() => {
     if (phaseRef.current !== "review") return;
+    if (ownedQuestionRef.current && ownedQuestionRef.current !== activeQuestionIdRef.current) {
+      invalidateAndRelease();
+      return;
+    }
     if (transcriptText.trim().length === 0) return;
 
     const currentDraft = getCurrentDraft();
@@ -807,15 +1098,13 @@ export function useVoiceRecording({
       currentDraft !== transcriptText &&
       typeof window !== "undefined"
     ) {
-      const confirmed = window.confirm(
-        PUBLIC_DEMO_BUILD ? "Replace your current typed answer draft with this sample transcript?" : "Replace your current typed answer draft with this confirmed transcript?",
-      );
+      const confirmed = window.confirm(replacePrompt(modeRef.current));
       if (!confirmed) return;
     }
 
     const nextText = transcriptText.slice(0, 10000);
     applyDraft(nextText);
-    invalidateAndRelease(PUBLIC_DEMO_BUILD ? "Applied sample transcript to your answer draft." : "Applied confirmed transcript to your answer draft.");
+    invalidateAndRelease(appliedStatus(modeRef.current));
     requestAnimationFrame(() => {
       focusAnswerTextarea();
     });
@@ -826,6 +1115,7 @@ export function useVoiceRecording({
       if (
         phaseRef.current === "requesting_permission" ||
         phaseRef.current === "recording" ||
+        phaseRef.current === "finishing" ||
         phaseRef.current === "normalizing" ||
         phaseRef.current === "transcribing"
       ) {
@@ -852,6 +1142,7 @@ export function useVoiceRecording({
   );
 
   return {
+    mode,
     phase,
     isHardLocked,
     hasUnappliedVoiceState,

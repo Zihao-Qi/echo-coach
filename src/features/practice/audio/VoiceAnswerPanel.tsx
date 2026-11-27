@@ -2,7 +2,7 @@
 
 import { AUDIO_MAX_SECONDS } from "../../../domain/audio/canonical-wav";
 import type { PracticeTranscriptionAccess } from "../usePracticeAccess";
-import { formatVoiceSeconds, type useVoiceRecording } from "./useVoiceRecording";
+import { formatVoiceSeconds, type useVoiceRecording, type VoiceCaptureMode } from "./useVoiceRecording";
 
 const button =
   "rounded-xl border border-line-strong bg-white px-3.5 py-2 text-xs font-semibold text-ink transition hover:bg-pebble disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
@@ -10,9 +10,23 @@ const button =
 const primaryButton =
   "rounded-xl border border-line-strong bg-ink px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-ink-hover disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
+function LiveWords({ text }: { text: string }) {
+  return (
+    <div className="mt-3">
+      <p id="live-words-label" className="text-xs font-bold text-ink">Words so far</p>
+      <p
+        aria-labelledby="live-words-label"
+        className="mt-1 max-h-24 overflow-y-auto rounded-xl bg-white p-3 text-sm leading-6 break-words text-body [overflow-wrap:anywhere]"
+      >
+        {text || "Listening…"}
+      </p>
+    </div>
+  );
+}
+
 interface VoiceAnswerPanelProps {
   transcriptionAccess: PracticeTranscriptionAccess;
-  browserOnly?: boolean;
+  mode?: VoiceCaptureMode;
   voice: ReturnType<typeof useVoiceRecording>;
   evaluationPending: boolean;
   hasExistingTypedDraft: boolean;
@@ -20,7 +34,7 @@ interface VoiceAnswerPanelProps {
 
 export function VoiceAnswerPanel({
   transcriptionAccess,
-  browserOnly = false,
+  mode = "server",
   voice,
   evaluationPending,
   hasExistingTypedDraft,
@@ -48,7 +62,13 @@ export function VoiceAnswerPanel({
   } = voice;
 
   const isDisabledCapability =
-    !browserOnly && (!transcriptionAccess.available || transcriptionAccess.mode === "disabled");
+    mode === "server" && (!transcriptionAccess.available || transcriptionAccess.mode === "disabled");
+  const reviewLabel = mode === "browser-speech" ? "Your transcript" : mode === "sample" ? "Sample transcript" : "Review and edit demo transcript before applying";
+  const reviewDescription = mode === "browser-speech"
+    ? "Edit this transcript before using it in your answer."
+    : mode === "sample"
+      ? "This demo doesn't recognize speech. Edit this sample before using it."
+      : "This text is a demo fixture, not recognition of your speech. Edit freely before copying it into your answer draft.";
 
   const trimmedTranscriptLength = transcriptText.trim().length;
   const isTranscriptEmpty = trimmedTranscriptLength === 0;
@@ -59,15 +79,19 @@ export function VoiceAnswerPanel({
       aria-label="Voice answer capture"
       className="mb-5 rounded-xl border border-line bg-pebble p-4"
     >
-      {!(browserOnly && phase === "review") && <div className="flex flex-wrap items-start justify-between gap-3">
+      {!(mode === "sample" && phase === "review") && <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-sm font-bold text-ink">Record answer (optional)</h2>
             <span className="rounded-full border border-line bg-card px-2.5 py-0.5 text-xs font-semibold text-ink">
-              {browserOnly ? "Browser only" : isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
+              {mode === "browser-speech" ? "Browser speech" : mode === "sample" ? "Browser only" : isDisabledCapability ? "Recording unavailable" : "Demo transcript fixture"}
             </span>
           </div>
-          {browserOnly ? (
+          {mode === "browser-speech" ? (
+            <p className="mt-1.5 text-xs leading-5 text-muted">
+              Your browser turns your speech into text and may send your audio to its provider (such as Google, Apple or Microsoft). Echo Coach&apos;s server doesn&apos;t receive it.
+            </p>
+          ) : mode === "sample" ? (
             <p className="mt-1.5 text-xs leading-5 text-muted">
               Record yourself to practice speaking. Your audio stays in this browser and is deleted when you stop. This demo doesn&apos;t recognize speech: after you stop, you&apos;ll see a sample transcript you can edit.
             </p>
@@ -110,32 +134,48 @@ export function VoiceAnswerPanel({
       )}
 
       {phase === "recording" && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-          <div className="flex items-center gap-2.5">
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-danger motion-reduce:animate-none"
+              />
+              <p className="text-xs font-semibold text-ink">
+                Recording:{" "}
+                <span className="font-mono">
+                  {formatVoiceSeconds(elapsedSeconds)} / {formatVoiceSeconds(AUDIO_MAX_SECONDS)}
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                ref={stopButtonRef}
+                type="button"
+                className={primaryButton}
+                onClick={stopRecording}
+              >
+                Stop recording
+              </button>
+              <button type="button" className={button} onClick={() => discardVoice(true)}>
+                Discard
+              </button>
+            </div>
+          </div>
+          {mode === "browser-speech" && <LiveWords text={transcriptText} />}
+        </div>
+      )}
+
+      {phase === "finishing" && mode === "browser-speech" && (
+        <div className="mt-3 border-t border-line pt-3">
+          <p className="flex items-center gap-2 text-xs font-medium text-body">
             <span
               aria-hidden="true"
-              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-danger motion-reduce:animate-none"
+              className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-marigold motion-reduce:animate-none"
             />
-            <p className="text-xs font-semibold text-ink">
-              Recording:{" "}
-              <span className="font-mono">
-                {formatVoiceSeconds(elapsedSeconds)} / {formatVoiceSeconds(AUDIO_MAX_SECONDS)}
-              </span>
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              ref={stopButtonRef}
-              type="button"
-              className={primaryButton}
-              onClick={stopRecording}
-            >
-              Stop recording
-            </button>
-            <button type="button" className={button} onClick={() => discardVoice(true)}>
-              Discard
-            </button>
-          </div>
+            Finishing…
+          </p>
+          <LiveWords text={transcriptText} />
         </div>
       )}
 
@@ -206,15 +246,15 @@ export function VoiceAnswerPanel({
       )}
 
       {phase === "review" && (
-        <div className={browserOnly ? undefined : "mt-3 border-t border-line pt-3"}>
+        <div className={mode === "sample" ? undefined : "mt-3 border-t border-line pt-3"}>
           <label
             htmlFor="voice-transcript-review"
             className="block text-xs font-bold text-ink"
           >
-            {browserOnly ? "Sample transcript" : "Review and edit demo transcript before applying"}
+            {reviewLabel}
           </label>
           <p id="voice-transcript-description" className="mt-1 text-xs text-muted">
-            {browserOnly ? "This demo doesn't recognize speech. Edit this sample before using it." : "This text is a demo fixture, not recognition of your speech. Edit freely before copying it into your answer draft."}
+            {reviewDescription}
           </p>
           <textarea
             ref={transcriptTextareaRef}
@@ -249,7 +289,7 @@ export function VoiceAnswerPanel({
               className={primaryButton}
               onClick={applyConfirmedTranscript}
             >
-              {browserOnly ? "Use in answer draft" : "Use confirmed transcript"}
+              {mode === "server" ? "Use confirmed transcript" : "Use in answer draft"}
             </button>
             <button
               type="button"
@@ -265,7 +305,7 @@ export function VoiceAnswerPanel({
               className={button}
               onClick={() => discardVoice(true)}
             >
-              {browserOnly ? "Discard" : "Discard transcript"}
+              {mode === "server" ? "Discard transcript" : "Discard"}
             </button>
           </div>
         </div>
@@ -305,7 +345,7 @@ export function VoiceAnswerPanel({
               <button
                 type="button"
                 disabled={evaluationPending}
-                className={button}
+                className={mode === "browser-speech" ? primaryButton : button}
                 onClick={() => void startRecording()}
               >
                 {hasRetainedAudio ? "Re-record" : "Try recording again"}
@@ -314,7 +354,7 @@ export function VoiceAnswerPanel({
             <button
               type="button"
               disabled={evaluationPending}
-              className={button}
+              className={mode === "browser-speech" ? "rounded-xl px-3.5 py-2 text-xs font-semibold text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink" : button}
               onClick={() => discardVoice(true)}
             >
               {hasRetainedAudio ? "Discard recording" : "Dismiss"}

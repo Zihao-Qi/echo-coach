@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 const PAGES = ["/", "/practice", "/mock-interview"];
 const PERMISSIONS_POLICY = "microphone=(self), camera=(), geolocation=()";
@@ -7,6 +8,43 @@ const REFERRER_POLICY = "strict-origin-when-cross-origin";
 function nonceFrom(policy: string) {
   const match = policy.match(/script-src[^;]*'nonce-([^']+)'/);
   return match?.[1];
+}
+
+function directivesFor(nonce: string) {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `style-src 'self' 'nonce-${nonce}'`,
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    "connect-src 'self' https://generativelanguage.googleapis.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "frame-src 'none'",
+    "upgrade-insecure-requests",
+  ];
+}
+
+function assertPolicy(policy: string | undefined) {
+  const directives = (policy ?? "").split(";").map((directive) => directive.trim()).filter(Boolean);
+  const nonce = nonceFrom(directives.join("; "));
+  expect(nonce).toBeTruthy();
+  expect(directives).toEqual(directivesFor(nonce!));
+  const scriptSrc = directives.find((directive) => directive.startsWith("script-src "));
+  expect(scriptSrc?.split(/\s+/)).not.toContain("'unsafe-inline'");
+  return nonce!;
+}
+
+function assertMarkup(html: string, nonce: string) {
+  const scripts = [...html.matchAll(/<script\b[^>]*>/gi)];
+  expect(scripts.length).toBeGreaterThan(0);
+  for (const [tag] of scripts) expect(tag).toContain(`nonce="${nonce}"`);
+  for (const [tag] of html.matchAll(/<style\b[^>]*>/gi)) expect(tag).toContain(`nonce="${nonce}"`);
 }
 
 declare global {
@@ -40,29 +78,27 @@ async function drain(page: Page, sink: string[]) {
   }));
 }
 
+async function restart(request: APIRequestContext) {
+  execFileSync("docker", ["restart", "echo-public-demo"], { stdio: "pipe" });
+  await expect.poll(async () => (await request.get("/", { failOnStatusCode: false }).catch(() => null))?.status()).toBe(200);
+}
+
 test("public documents carry distinct nonces on their scripts", async ({ request }) => {
+  await restart(request);
   for (const path of PAGES) {
     const first = await request.get(path);
     const second = await request.get(path);
     expect(first.status(), path).toBe(200);
     expect(second.status(), path).toBe(200);
-    const policy = first.headers()["content-security-policy"];
-    const again = second.headers()["content-security-policy"];
-    const nonce = nonceFrom(policy ?? "");
-    const other = nonceFrom(again ?? "");
-    expect(nonce, path).toBeTruthy();
-    expect(other).not.toBe(nonce);
-    expect(policy).toContain("style-src-attr 'unsafe-inline'");
-    expect(policy).toContain("connect-src 'self' https://generativelanguage.googleapis.com");
-    expect(policy).not.toContain("script-src 'unsafe-inline'");
-    expect(first.headers()["permissions-policy"]).toBe(PERMISSIONS_POLICY);
-    expect(first.headers()["referrer-policy"]).toBe(REFERRER_POLICY);
-    const html = await first.text();
-    const scripts = [...html.matchAll(/<script\b[^>]*>/gi)];
-    expect(scripts.length, path).toBeGreaterThan(0);
-    for (const [tag] of scripts) {
-      expect(tag, path).toContain(`nonce="${nonce}"`);
+    const nonce = assertPolicy(first.headers()["content-security-policy"]);
+    const other = assertPolicy(second.headers()["content-security-policy"]);
+    expect(other, path).not.toBe(nonce);
+    for (const response of [first, second]) {
+      expect(response.headers()["permissions-policy"]).toBe(PERMISSIONS_POLICY);
+      expect(response.headers()["referrer-policy"]).toBe(REFERRER_POLICY);
     }
+    assertMarkup(await first.text(), nonce);
+    assertMarkup(await second.text(), other);
   }
   for (const path of ["/api/practice/access", "/favicon.ico"]) {
     const response = await request.get(path);
@@ -73,6 +109,7 @@ test("public documents carry distinct nonces on their scripts", async ({ request
 });
 
 test("sample practice, playback, recording and the mock interview report no CSP violations", async ({ page, baseURL }) => {
+  await restart(page.request);
   const origin = new URL(baseURL!).origin;
   const external: string[] = [];
   await page.route("**/*", (route) => {
@@ -86,7 +123,8 @@ test("sample practice, playback, recording and the mock interview report no CSP 
   await arm(page);
   const draft = "I compared two fictional sketches and chose the simpler one because the deadline was one day away.";
 
-  await page.goto("/");
+  const home = await page.goto("/");
+  assertPolicy(home?.headers()["content-security-policy"]);
   await expect(page.getByRole("heading", { name: "Good answers are built." })).toBeVisible();
   await drain(page, violations);
   await page.getByRole("link", { name: "Start focused practice", exact: true }).click();
@@ -111,7 +149,8 @@ test("sample practice, playback, recording and the mock interview report no CSP 
   await expect(page.getByRole("heading", { name: "Sample feedback" })).toBeVisible();
   await drain(page, violations);
 
-  await page.goto("/mock-interview");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Mock interview", exact: true }).click();
+  await expect(page).toHaveURL(/\/mock-interview$/);
   await page.getByRole("button", { name: "Start mock interview", exact: true }).click();
   const mockProgress = page.getByRole("progressbar", { name: "Question audio progress" });
   await page.getByRole("button", { name: "Listen to the question" }).click();
@@ -121,7 +160,7 @@ test("sample practice, playback, recording and the mock interview report no CSP 
   await expect(page.getByText("Question 2 of 3", { exact: true })).toBeVisible();
   await drain(page, violations);
 
-  await page.goto("/practice");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Practice", exact: true }).click();
   await expect(page.getByLabel("Your answer", { exact: true })).toBeVisible();
   await drain(page, violations);
 

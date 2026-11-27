@@ -24,7 +24,7 @@ function parseTranscriptionAccess(raw: unknown): PracticeTranscriptionAccess {
   return { mode, available, ...(reason ? { reason } : {}) };
 }
 
-export function usePracticeAccess() {
+export function usePracticeAccess(keyMode = false) {
   const [mode, setMode] = useState<"loading" | "demo" | "authjs">("loading");
   const [user, setUser] = useState<PracticeUser | null>(null);
   const [storage, setStorage] = useState<"memory" | "firestore">("memory");
@@ -33,6 +33,7 @@ export function usePracticeAccess() {
   const [transcription, setTranscription] = useState<PracticeTranscriptionAccess>(DEFAULT_TRANSCRIPTION_ACCESS);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    if (keyMode) return;
     let cancelled = false;
     const controller = new AbortController();
     async function refresh() {
@@ -56,7 +57,7 @@ export function usePracticeAccess() {
     const onFocus = () => { void refresh(); };
     window.addEventListener("focus", onFocus);
     return () => { cancelled = true; controller.abort(); window.removeEventListener("focus", onFocus); };
-  }, []);
+  }, [keyMode]);
   // Browser sends the HttpOnly session cookie. No provider token goes into JS headers.
   const headers = useCallback(async (): Promise<Record<string, string>> => ({}), []);
   async function login() {
@@ -68,5 +69,5 @@ export function usePracticeAccess() {
     try { await signOut({ redirectTo: "/practice" }); }
     catch { setError("Sign-out could not be completed. Please try again."); }
   }
-  return { mode, user, storage, mockEvaluation, localGemini, transcription, error, ready: mode === "demo" || (mode === "authjs" && !!user), headers, login, logout };
+  return { keyMode, mode, user, storage, mockEvaluation, localGemini, transcription, error, ready: keyMode || mode === "demo" || (mode === "authjs" && !!user), headers, login, logout };
 }

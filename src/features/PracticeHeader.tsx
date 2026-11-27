@@ -7,11 +7,13 @@ export function PracticeHeader({
   disabled,
   onNavigate,
   children,
+  keyMode = false,
 }: {
   page: "home" | "practice" | "mock";
   disabled?: boolean;
   onNavigate?: MouseEventHandler<HTMLAnchorElement>;
   children?: ReactNode;
+  keyMode?: boolean;
 }) {
   const links = [
     ["home", "/", "Home"],
@@ -28,7 +30,7 @@ export function PracticeHeader({
     <header className="flex flex-col items-start gap-x-3 rounded-2xl border border-line bg-card px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
       <div className="flex items-center gap-3">
         <Link
-          className="inline-flex items-center font-display text-xl tracking-tight"
+          className={`inline-flex items-center font-display text-xl tracking-tight${keyMode ? " key-mode-brand" : ""}`}
           href="/"
           aria-label="echocoach"
           {...guard}
@@ -44,7 +46,7 @@ export function PracticeHeader({
       </div>
       <nav
         aria-label="Main navigation"
-        className="-ml-2 flex flex-wrap items-center sm:ml-0"
+        className={`flex flex-wrap items-center ${keyMode ? "gap-2" : "-ml-2 sm:ml-0"}`}
       >
         {links
           .filter(([id]) => id !== page)

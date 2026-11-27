@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AttemptCursor } from "../../application/ports/attempt-repository";
 import type { AttemptRecord } from "../../domain/interview/attempt-record";
 
+import { localHistory, historyNotice } from "./key/history";
+
 interface LoadedHistory {
   records: AttemptRecord[];
   cursor: AttemptCursor | null;
@@ -16,7 +18,7 @@ function merge(current: AttemptRecord[], fresh: AttemptRecord[]) {
   return [...byId.values()];
 }
 
-export function usePracticeHistory(headers: () => Promise<Record<string, string>>, onEmpty: () => void) {
+export function usePracticeHistory(headers: () => Promise<Record<string, string>>, onEmpty: () => void, keyMode = false) {
   const [page, setPage] = useState<LoadedHistory>({ records: [], cursor: null, loadedOlder: false });
   // All writes update this snapshot before publishing to React, even when renders are batched.
   const currentPage = useRef(page);
@@ -32,6 +34,11 @@ export function usePracticeHistory(headers: () => Promise<Record<string, string>
     const request = invalidateRequests();
     const current = () => request === revision.current && !signal?.aborted;
     try {
+      if (keyMode) {
+        publish({ records: localHistory().map(a => ({ ...a, status: "completed" })), cursor: null, loadedOlder: false });
+        setError(historyNotice() || null);
+        return;
+      }
       const response = await fetch(`/api/practice/attempts${after ? `?cursor=${encodeURIComponent(JSON.stringify(after))}` : ""}`, { headers: await headers(), signal });
       const payload = await response.json();
       if (!current()) return;
@@ -53,7 +60,7 @@ export function usePracticeHistory(headers: () => Promise<Record<string, string>
     } catch (cause) {
       if (current()) setError(cause instanceof Error ? cause.message : "Could not load history.");
     } finally { if (current()) setLoading(false); }
-  }, [headers, onEmpty, invalidateRequests, publish]);
+  }, [headers, onEmpty, invalidateRequests, publish, keyMode]);
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);

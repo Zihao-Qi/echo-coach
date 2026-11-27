@@ -32,7 +32,7 @@ docker network create --internal "$net"
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost \
   -keyout "$dir/key.pem" -out "$dir/cert.pem" 2>/dev/null
 export PUBLIC_DEMO_LOG_MARKERS="$dir/markers"
-printf '%s\n' DEMO_ANSWER_MARKER DEMO_REQUEST_BODY_MARKER \
+printf '%s\n' DEMO_ANSWER_MARKER DEMO_REQUEST_BODY_MARKER SYNTHETIC_BYOK_HEADER_ONLY_MARKER \
   'This demo shows sample feedback. It does not assess whether your answer is correct.' > "$PUBLIC_DEMO_LOG_MARKERS"
 
 # The baked demo image must not start without the explicit runtime selection.

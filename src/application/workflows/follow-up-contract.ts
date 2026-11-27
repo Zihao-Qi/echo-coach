@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./evaluation-zod";
 
 export const followUpSchema = z.object({
   prompt: z.string().trim().min(10).max(300),

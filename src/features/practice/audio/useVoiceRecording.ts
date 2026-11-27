@@ -9,7 +9,10 @@ import type { PracticeTranscriptionAccess } from "../usePracticeAccess";
 import { MAX_ENCODED_RECORDING_BYTES, normalizeRecording } from "./normalize-recording";
 import { applySpeechResult, SPEECH_TRANSCRIPT_LIMIT, type SpeechDraft } from "./speech-results";
 
-export type VoiceCaptureMode = "server" | "sample" | "browser-speech";
+import { transcribe } from "../key/transport";
+import { GeminiFailure } from "../../../application/workflows/gemini-evaluation";
+
+export type VoiceCaptureMode = "server" | "sample" | "browser-speech" | "gemini-key";
 
 export type VoiceRecordingPhase =
   | "idle"
@@ -110,7 +113,7 @@ export function formatVoiceSeconds(totalSeconds: number): string {
 }
 
 export function useVoiceRecording({
-  activeQuestionId,
+  keyMode = false, activeQuestionId,
   transcriptionAccess,
   sampleTranscript,
   getHeaders,
@@ -118,6 +121,7 @@ export function useVoiceRecording({
   applyDraft,
   focusAnswerTextarea,
 }: {
+  keyMode?: boolean;
   activeQuestionId: string;
   transcriptionAccess: PracticeTranscriptionAccess;
   sampleTranscript?: string;
@@ -131,6 +135,7 @@ export function useVoiceRecording({
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [transcriptText, setTranscriptText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [offerRemoveKey, setOfferRemoveKey] = useState(false);
   const [errorRecovery, setErrorRecovery] = useState<VoiceErrorRecovery>("none");
   const [statusAnnouncement, setStatusAnnouncement] = useState("");
 
@@ -152,14 +157,14 @@ export function useVoiceRecording({
   const speechRef = useRef<SpeechSession | null>(null);
   const ownedQuestionRef = useRef<string | null>(null);
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [mode, setMode] = useState<VoiceCaptureMode>(PUBLIC_DEMO_BUILD ? "sample" : "server");
+  const [mode, setMode] = useState<VoiceCaptureMode>(keyMode ? "gemini-key" : PUBLIC_DEMO_BUILD ? "sample" : "server");
   const modeRef = useRef(mode);
   modeRef.current = mode;
 
   useEffect(() => {
-    if (!PUBLIC_DEMO_BUILD) return;
+    if (!PUBLIC_DEMO_BUILD || keyMode) return;
     setMode(speechRecognitionConstructor() ? "browser-speech" : "sample");
-  }, []);
+  }, [keyMode]);
 
   useEffect(() => {
     if (phase !== "review") return;
@@ -473,6 +478,25 @@ export function useVoiceRecording({
     }
   }, [clearRecordingTimers, commitSpeech, updatePhase]);
 
+  const transcribeWithKey = useCallback(async () => {
+    const job = jobRef.current;
+    if (!job?.wavBytes || fetchControllerRef.current) return;
+    const controller = new AbortController(); fetchControllerRef.current = controller;
+    updatePhase("transcribing"); setError(null); setOfferRemoveKey(false); setErrorRecovery("none"); setStatusAnnouncement("Transcribing recording…");
+    try {
+      const text = await transcribe(job.wavBytes, controller.signal);
+      if (jobRef.current !== job || controller.signal.aborted) return;
+      job.wavBytes.fill(0); job.wavBytes = null; ownedQuestionRef.current = job.questionId;
+      setTranscriptText(text); updatePhase("review"); setStatusAnnouncement("Transcript ready to edit.");
+    } catch (e) {
+      if (jobRef.current !== job) return;
+      const message = controller.signal.aborted ? "Stopped waiting for transcription. You can try again with this recording or discard it."
+        : e instanceof Error ? e.message : "Couldn't reach Google. Try again.";
+      setOfferRemoveKey(e instanceof GeminiFailure && e.removeKey);
+      setError(message); setStatusAnnouncement(message); setErrorRecovery("new_attempt"); updatePhase("error");
+    } finally { if (fetchControllerRef.current === controller) fetchControllerRef.current = null; }
+  }, [updatePhase]);
+
   const startRecording = useCallback(async () => {
     if (
       phaseRef.current === "requesting_permission" ||
@@ -500,7 +524,7 @@ export function useVoiceRecording({
       !navigator.mediaDevices ||
       typeof navigator.mediaDevices.getUserMedia !== "function" ||
       typeof MediaRecorder === "undefined" ||
-      (!PUBLIC_DEMO_BUILD && typeof OfflineAudioContext === "undefined")
+      (modeRef.current !== "sample" && typeof OfflineAudioContext === "undefined")
     ) {
       updatePhase("error");
       setError(
@@ -513,6 +537,7 @@ export function useVoiceRecording({
 
     // Invalidate any prior retained job before starting a new recording
     generationRef.current += 1;
+    setOfferRemoveKey(false);
     const jobGeneration = generationRef.current;
     const capturedQuestionId = activeQuestionIdRef.current;
 
@@ -626,7 +651,7 @@ export function useVoiceRecording({
       track.addEventListener("ended", handleTrackEnded, { once: true });
     }
 
-    recorder.ondataavailable = PUBLIC_DEMO_BUILD ? null : (event: BlobEvent) => {
+    recorder.ondataavailable = modeRef.current === "sample" ? null : (event: BlobEvent) => {
       if (
         generationRef.current !== jobGeneration ||
         recorderFailed ||
@@ -707,8 +732,8 @@ export function useVoiceRecording({
       recorderRef.current = null;
       streamRef.current = null;
 
-      // The public recorder never retains chunks, creates a blob, or contacts transcription.
-      if (PUBLIC_DEMO_BUILD) {
+      // The sample recorder never retains chunks or contacts transcription.
+      if (modeRef.current === "sample") {
         if (trackLostBeforeStop || !sampleTranscript) {
           jobRef.current = null;
           updatePhase("error");
@@ -773,6 +798,7 @@ export function useVoiceRecording({
           requestId: null,
         };
         setDurationSeconds(normalized.info.durationSeconds);
+        if (modeRef.current === "gemini-key") { await transcribeWithKey(); return; }
         updatePhase("ready_to_transcribe");
         setStatusAnnouncement(
           `Recording ready (${Math.max(1, Math.round(normalized.info.durationSeconds))} seconds). Choose Transcribe (demo) to continue.`,
@@ -837,7 +863,7 @@ export function useVoiceRecording({
         }
       }
     }, AUDIO_MAX_SECONDS * 1000);
-  }, [clearRecordingTimers, readCurrentPhase, sampleTranscript, startBrowserSpeech, transcriptionAccess.available, transcriptionAccess.mode, updatePhase]);
+  }, [clearRecordingTimers, readCurrentPhase, sampleTranscript, startBrowserSpeech, transcribeWithKey, transcriptionAccess.available, transcriptionAccess.mode, updatePhase]);
 
   const stopRecording = useCallback(() => {
     if (phaseRef.current !== "recording") return;
@@ -1063,8 +1089,9 @@ export function useVoiceRecording({
   }, [sendTranscription]);
 
   const startNewTranscriptionAttempt = useCallback(() => {
-    void sendTranscription("start", true);
-  }, [sendTranscription]);
+    if (modeRef.current === "gemini-key") void transcribeWithKey();
+    else void sendTranscription("start", true);
+  }, [sendTranscription, transcribeWithKey]);
 
   const cancelTranscriptionWait = useCallback(() => {
     if (phaseRef.current !== "transcribing" || !fetchControllerRef.current) return;
@@ -1152,6 +1179,7 @@ export function useVoiceRecording({
     transcriptText,
     setTranscriptText: (value: string) => setTranscriptText(value.slice(0, 10000)),
     error,
+    offerRemoveKey,
     errorRecovery,
     statusAnnouncement,
     stopButtonRef,

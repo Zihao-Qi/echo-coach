@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   getDemoAudio,
   getSampleContent,
@@ -28,14 +28,23 @@ import { PracticeHeader } from "../PracticeHeader";
 import { QuestionSwitcher, trackLabel } from "./QuestionSwitcher";
 import { describeIncompleteRecord } from "./practiceTarget";
 import { usePracticeAccess } from "./usePracticeAccess";
-import { usePracticeSession } from "./usePracticeSession";
+import { usePracticeSession, PracticeCarry } from "./usePracticeSession";
+import { initializeKey, removeKey, subscribeKey, keySnapshot, serverKeySnapshot } from "./key/key-store";
+import { KeyControl } from "./key/KeyControl";
 
 export function PracticeWorkspace({
   initialTrack = "behavioral",
 }: {
   initialTrack?: InterviewTrack;
 }) {
-  const access = usePracticeAccess();
+  const mode = useSyncExternalStore(subscribeKey, keySnapshot, serverKeySnapshot);
+  const [carry] = useState(() => new PracticeCarry());
+  useEffect(() => { if (PUBLIC_DEMO_BUILD) initializeKey(); }, []);
+  if (PUBLIC_DEMO_BUILD && mode === null) return <div className="refresh"><div className="shell"><PracticeHeader page="practice" /><main className="panel mt-12">Initializing practice…</main></div></div>;
+  return <AccessBoundary key={PUBLIC_DEMO_BUILD && mode ? "key" : "normal"} initialTrack={initialTrack} keyMode={PUBLIC_DEMO_BUILD && !!mode} carry={carry} />;
+}
+function AccessBoundary({ initialTrack, keyMode, carry }: { initialTrack: InterviewTrack; keyMode: boolean; carry: PracticeCarry }) {
+  const access = usePracticeAccess(keyMode);
   if (!access.ready)
     return (
       <div className="refresh">
@@ -71,18 +80,20 @@ export function PracticeWorkspace({
     <PracticeSessionView
       key={`${access.user?.id || "demo"}:${initialTrack}`}
       access={access}
+      carry={carry}
       initialTrack={initialTrack}
     />
   );
 }
 function PracticeSessionView({
   access,
-  initialTrack,
+  initialTrack, carry,
 }: {
+  carry: PracticeCarry;
   access: ReturnType<typeof usePracticeAccess>;
   initialTrack: InterviewTrack;
 }) {
-  const session = usePracticeSession({ access, initialTrack });
+  const session = usePracticeSession({ access, initialTrack, carry });
   const {
     history,
     attempts,
@@ -92,7 +103,7 @@ function PracticeSessionView({
     answer,
     hintCount,
     pending,
-    error,
+    error, offerRemoveKey,
     statusAnnouncement,
     questionAttempts,
     latest,
@@ -109,7 +120,12 @@ function PracticeSessionView({
     answerTextareaRef,
   } = session;
   const [editing, setEditing] = useState(false);
-  const [recapOpen, setRecapOpen] = useState(false);
+  const [recap, requestRecap] = useState<boolean | "restore">(PUBLIC_DEMO_BUILD && carry.recap ? "restore" : false);
+  const setRecapOpen = (open: boolean) => { if (PUBLIC_DEMO_BUILD) carry.setRecap(open); requestRecap(open); };
+  if (recap === "restore" && !history.loading) requestRecap(history.records.some(r => r.status === "completed"));
+  useEffect(() => { if (PUBLIC_DEMO_BUILD && recap !== "restore") carry.setRecap(recap); }, [recap, carry]);
+  const recapOpen = recap === true;
+  const [generating, setGenerating] = useState(false);
   const recapHeading = useRef<HTMLHeadingElement>(null);
   const reloadHistory = history.load;
   useEffect(() => {
@@ -134,6 +150,7 @@ function PracticeSessionView({
   const feedbackHeading = useRef<HTMLHeadingElement>(null);
   const expanded = !latest || editing;
   const voice = useVoiceRecording({
+    keyMode: access.keyMode,
     activeQuestionId: target.questionId,
     transcriptionAccess: access.transcription,
     sampleTranscript: sample?.sampleTranscript,
@@ -143,6 +160,15 @@ function PracticeSessionView({
     focusAnswerTextarea: () => answerTextareaRef.current?.focus(),
   });
   const hardLocked = pending || voice.isHardLocked;
+  function maySwitchKey() {
+    return !hardLocked && !generating && (!voice.hasUnappliedVoiceState || window.confirm("Discard your unapplied voice recording or transcript?"));
+  }
+  function clearKey() {
+    if (!maySwitchKey()) return;
+    stopDemoAudio();
+    carry.switchKey();
+    removeKey();
+  }
   function navigate(action: () => void, edit = false) {
     if (hardLocked || !voice.confirmDiscardIfNeeded()) return;
     stopDemoAudio();
@@ -194,16 +220,17 @@ function PracticeSessionView({
     (latest.rootQuestionId ?? latest.questionId) === target.questionId
       ? nextStarterQuestion(target.questionId)
       : undefined;
-  const storage = PUBLIC_DEMO_BUILD
+  const storage = access.keyMode ? "Key-mode history stays in this tab. Feedback uses your Gemini key." : PUBLIC_DEMO_BUILD
     ? "Use made-up examples. No personal details. History is temporary and may reset."
     : access.storage === "memory"
       ? `${access.mode === "demo" ? "Demo" : "Google sign-in preview"} · History stays in this server process and is lost on restart.`
       : "Private practice · Submitted answers are saved to your account; unsent drafts are not.";
   return (
-    <div className="refresh">
+    <div className="refresh" data-key-mode={access.keyMode ? "" : undefined}>
       <div className="shell">
         <PracticeHeader
           page="practice"
+          keyMode={access.keyMode}
           disabled={hardLocked}
           onNavigate={(e) => {
             if (hardLocked || !voice.confirmDiscardIfNeeded())
@@ -211,7 +238,8 @@ function PracticeSessionView({
             else stopDemoAudio();
           }}
         >
-          {!recapOpen &&
+          {PUBLIC_DEMO_BUILD && <KeyControl active={access.keyMode} disabled={hardLocked || generating} maySwitch={maySwitchKey} onRemove={clearKey} carry={carry} />}
+          {recap === false &&
             history.records.some((record) => completedAttempt(record)) && (
               <button
                 className="action"
@@ -237,7 +265,8 @@ function PracticeSessionView({
             </button>
           )}
         </PracticeHeader>
-        {recapOpen ? (
+        {access.keyMode && carry.notice && <p role="status" className="panel">{carry.notice}</p>}
+        {recap === "restore" ? <main className="panel" role="status">Loading session history…</main> : recapOpen ? (
           <SessionRecap
             records={history.records}
             error={history.error}
@@ -352,12 +381,10 @@ function PracticeSessionView({
                   (latest ? "Feedback ready" : "Ready for your answer")}
             </p>
             {error && (
-              <p
-                role="alert"
-                className="rounded-xl bg-danger-tint p-4 text-danger"
-              >
-                {error}
-              </p>
+              <div role="alert" className="rounded-xl bg-danger-tint p-4 text-danger">
+                <p>{error}</p>
+                {offerRemoveKey && <button type="button" className="action mt-2" onClick={clearKey}>Remove key</button>}
+              </div>
             )}
             {!expanded ? (
               <section className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4">
@@ -395,6 +422,7 @@ function PracticeSessionView({
                     <AudioPlayer
                       key={questionAudio.path}
                       asset={questionAudio}
+                      disabled={access.keyMode && hardLocked}
                       headingRef={questionHeadingRef}
                     />
                   )}
@@ -465,6 +493,7 @@ function PracticeSessionView({
                         transcriptionAccess={access.transcription}
                         evaluationPending={pending}
                         hasExistingTypedDraft={!!answer.trim()}
+                        onRemoveKey={access.keyMode ? clearKey : undefined}
                       />
                     )}
                     <label
@@ -590,6 +619,8 @@ function PracticeSessionView({
             )}
             {latest && (
               <PracticeFeedback
+                keyMode={access.keyMode}
+                onGenerating={setGenerating}
                 headingRef={feedbackHeading}
                 latest={latest}
                 displayedQuestion={question}

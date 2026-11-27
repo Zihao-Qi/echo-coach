@@ -5,6 +5,8 @@ import type { DemoAudioAsset } from "../content/questions/demo-audio";
 
 // Each visible player owns its element. Coordination is local to this browser tab.
 let playing: HTMLAudioElement | undefined;
+let generating: AbortController | undefined;
+type Generated = { load: (signal: AbortSignal) => Promise<{ blob: Blob; duration: number }>; onBusy: (value: boolean) => void; disabled: boolean };
 const mounted = new Set<HTMLAudioElement>();
 
 function rewind(audio: HTMLAudioElement) {
@@ -13,6 +15,7 @@ function rewind(audio: HTMLAudioElement) {
 }
 
 export function stopDemoAudio() {
+  generating?.abort();
   playing = undefined;
   for (const audio of mounted) rewind(audio);
 }
@@ -23,23 +26,34 @@ function clock(value: number) {
 }
 
 export function AudioPlayer({
-  asset,
+  asset, generated, disabled,
   headingRef,
-}: {
-  asset: DemoAudioAsset;
-  headingRef: RefObject<HTMLHeadingElement | null>;
+}: ({ asset: DemoAudioAsset; generated?: never } | { asset?: never; generated: Generated }) & {
+  headingRef: RefObject<HTMLElement | null>;
+  disabled?: boolean;
 }) {
   const element = useRef<HTMLAudioElement>(null);
   const request = useRef(0);
   const [paused, setPaused] = useState(true);
   const [elapsed, setElapsed] = useState(0);
   const [failed, setFailed] = useState(false);
-  const question = asset.kind === "question";
-  const total = asset.durationSeconds;
+  const cached = useRef<{ url: string; duration: number } | null>(null);
+  const pending = useRef<AbortController | null>(null);
+  const [loading, setLoading] = useState(false), [message, setMessage] = useState("");
+  const busyObserver = useRef(generated?.onBusy);
+  useEffect(() => { busyObserver.current = generated?.onBusy; }, [generated?.onBusy]);
+  useEffect(() => () => {
+    if (pending.current) { pending.current.abort(); busyObserver.current?.(false); pending.current = null; }
+    if (cached.current) URL.revokeObjectURL(cached.current.url);
+    cached.current = null;
+  }, []);
+  const isGenerated = !!generated;
+  const question = asset?.kind === "question";
+  const total = asset?.durationSeconds ?? cached.current?.duration ?? 0;
   const current = Math.min(elapsed, total);
 
   useEffect(() => {
-    if (failed) return;
+    if (failed && !isGenerated) return;
     const audio = element.current;
     if (!audio) return;
     mounted.add(audio);
@@ -48,7 +62,7 @@ export function AudioPlayer({
       if (playing === audio) playing = undefined;
       rewind(audio);
     };
-  }, [failed]);
+  }, [failed, isGenerated]);
 
   function fail(audio: HTMLAudioElement) {
     if (playing === audio) stopDemoAudio();
@@ -58,7 +72,25 @@ export function AudioPlayer({
 
   async function toggle() {
     const audio = element.current;
-    if (!audio) return;
+    if (!audio || pending.current || disabled || generated?.disabled) return;
+    generating?.abort();
+    if (generated && !cached.current) {
+      stopDemoAudio(); const controller = new AbortController(); pending.current = generating = controller;
+      setLoading(true); setFailed(false); setMessage(""); generated.onBusy(true);
+      try {
+        const result = await generated.load(controller.signal);
+        if (controller.signal.aborted) return;
+        cached.current = { url: URL.createObjectURL(result.blob), duration: result.duration };
+        audio.src = cached.current.url;
+      } catch (e) {
+        if (!controller.signal.aborted) { setMessage(e instanceof Error ? e.message : "Audio isn't available right now."); fail(audio); }
+        return;
+      } finally {
+        if (generating === controller) generating = undefined;
+        if (pending.current === controller) { pending.current = null; setLoading(false); generated.onBusy(false); }
+      }
+    }
+    setFailed(false);
     const attempt = ++request.current;
     if (!audio.paused || playing === audio) {
       if (playing === audio) playing = undefined;
@@ -74,7 +106,7 @@ export function AudioPlayer({
     }
   }
 
-  const label = question
+  const label = generated ? (loading ? "Generating audio…" : failed ? "Try again" : paused ? "Play" : "Pause") : question
     ? paused
       ? "Listen to the question"
       : "Pause question audio"
@@ -86,17 +118,17 @@ export function AudioPlayer({
       <p
         role="status"
         aria-live="polite"
-        className={failed ? "mt-3 text-sm" : "sr-only"}
+        className={failed ? (generated ? "mt-3 rounded-xl border border-danger-line bg-danger-tint px-3 py-2 text-sm text-danger" : "mt-3 text-sm") : "sr-only"}
       >
-        {failed ? "Audio isn't available right now." : ""}
+        {failed ? message || "Audio isn't available right now." : loading ? "Generating audio…" : ""}
       </p>
-      {!failed && (
+      {(!failed || generated) && (
         <div
-          className={`mt-4 grid items-center gap-2 rounded-xl p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] ${question ? "bg-pebble" : "bg-night-inset"}`}
+          className={`mt-4 grid items-center gap-2 rounded-xl p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] ${question || generated ? "bg-pebble" : "bg-night-inset"}`}
         >
           <audio
             ref={element}
-            src={asset.path}
+            src={asset?.path}
             preload="none"
             onPlay={() => setPaused(false)}
             onPause={() => setPaused(true)}
@@ -116,19 +148,20 @@ export function AudioPlayer({
           <button
             type="button"
             className={`action ${question ? "border-marigold bg-marigold text-white hover:bg-marigold-hover" : "border-bright bg-bright px-3 text-ink hover:bg-canvas focus-visible:outline-bright!"}`}
+            disabled={disabled || loading || generated?.disabled}
             aria-label={label}
             onClick={() => void toggle()}
           >
-            <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>
-            {question ? label : paused ? "Play" : "Pause"}
+            {!(generated && (loading || failed)) && <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>}
+            {generated || question ? label : paused ? "Play" : "Pause"}
           </button>
-          <div className="flex min-w-0 items-center gap-2">
+          {total > 0 && <div className="flex min-w-0 items-center gap-2">
             <div
               role="progressbar"
               aria-label={
                 question
                   ? "Question audio progress"
-                  : "Sample polished answer audio progress"
+                  : generated ? "Suggested answer audio progress" : "Sample polished answer audio progress"
               }
               aria-valuemin={0}
               aria-valuemax={total}
@@ -137,18 +170,18 @@ export function AudioPlayer({
               className={`h-2 flex-1 overflow-hidden rounded-full ${question ? "bg-line-strong" : "bg-muted"}`}
             >
               <div
-                className={`h-full ${question ? "bg-marigold" : "bg-bright"}`}
+                className={`h-full ${question || generated ? "bg-marigold" : "bg-bright"}`}
                 style={{ width: `${(100 * current) / total}%` }}
               />
             </div>
             <span aria-hidden="true" className="text-xs tabular-nums">
               {clock(current)} / {clock(total)}
             </span>
-          </div>
+          </div>}
           <span
-            className={`text-xs ${question ? "text-muted" : "text-night-muted"}`}
+            className={`text-xs ${question || generated ? "text-muted" : "text-night-muted"}`}
           >
-            AI-generated voice
+            AI-generated voice{generated ? " · uses your key" : ""}
           </span>
         </div>
       )}

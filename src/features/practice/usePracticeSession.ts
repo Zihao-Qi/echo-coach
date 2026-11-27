@@ -21,6 +21,19 @@ import { useAttemptBaseline } from "./useAttemptBaseline";
 import type { usePracticeAccess } from "./usePracticeAccess";
 import { usePracticeHistory } from "./usePracticeHistory";
 
+import { evaluateLocally, saveAttempt } from "./key/history";
+import { GeminiFailure } from "../../application/workflows/gemini-evaluation";
+
+export class PracticeCarry {
+  rootId?: string;
+  drafts: Record<string, string> = {};
+  recap = false;
+  notice = "";
+  focusKey = false;
+  setRecap(value: boolean) { this.recap = value; }
+  switchKey(notice = "") { this.focusKey = true; this.notice = notice; }
+}
+
 type SubmissionCache = {
   submissionId: string;
   questionId: string;
@@ -31,8 +44,9 @@ type SubmissionCache = {
 
 export function usePracticeSession({
   access,
-  initialTrack,
+  initialTrack, carry,
 }: {
+  carry: PracticeCarry;
   access: ReturnType<typeof usePracticeAccess>;
   initialTrack: InterviewTrack;
 }) {
@@ -42,7 +56,7 @@ export function usePracticeSession({
     setSelectedAttempt(null);
     setSubmissionCache({});
   }, []);
-  const history = usePracticeHistory(access.headers, clearAttemptLineage);
+  const history = usePracticeHistory(access.headers, clearAttemptLineage, access.keyMode);
 
   const loadedAttempts = history.records
     .map(completedAttempt)
@@ -54,17 +68,18 @@ export function usePracticeSession({
   );
 
   const initialStarter =
-    starterQuestions.find((item) => item.track === initialTrack) ?? starterQuestions[0];
-  const [track, setTrack] = useState<InterviewTrack>(initialTrack);
+    starterQuestions.find(item => item.id === carry.rootId) ?? starterQuestions.find((item) => item.track === initialTrack) ?? starterQuestions[0];
+  const [track, setTrack] = useState<InterviewTrack>(initialStarter.track);
   const [target, setTarget] = useState<PracticeTarget>({
     kind: "root",
     questionId: initialStarter.id,
     rootQuestionId: initialStarter.id,
   });
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => ({ ...carry.drafts }));
   const [hintCount, setHintCount] = useState(0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offerRemoveKey, setOfferRemoveKey] = useState(false);
   const [statusAnnouncement, setStatusAnnouncement] = useState<string>("");
 
   const requestRef = useRef<AbortController | null>(null);
@@ -83,7 +98,7 @@ export function usePracticeSession({
   const parentSourceBaseline = useAttemptBaseline(
     target.kind === "followup" ? target.followUpOfAttemptId : undefined,
     history.records,
-    access.headers,
+    access.headers, access.keyMode,
   );
   const parentRecord = parentSourceBaseline.record;
 
@@ -144,14 +159,14 @@ export function usePracticeSession({
     ? cached : undefined;
   // An unchanged recovered submission keeps its original lineage (including no baseline).
   const retryBaselineId = resumableSubmission ? resumableSubmission.previousAttemptId : latest?.id;
-  const baseline = useAttemptBaseline(latest?.previousAttemptId, history.records, access.headers);
+  const baseline = useAttemptBaseline(latest?.previousAttemptId, history.records, access.headers, access.keyMode);
   const previous = baseline.record;
   const localRetry = questionAttempts.find((attempt) => attempt.id === retryBaselineId);
   const localRetryEvaluation = localRetry?.evaluation;
   const recoveryBaseline = useAttemptBaseline(
     !localRetryEvaluation && retryBaselineId !== latest?.previousAttemptId ? retryBaselineId : undefined,
     history.records,
-    access.headers,
+    access.headers, access.keyMode,
   );
   const linkedRetry = retryBaselineId === latest?.previousAttemptId ? previous : recoveryBaseline.record;
   const linkedEvaluation = linkedRetry?.id === retryBaselineId && linkedRetry?.questionId === activeQuestionId
@@ -173,6 +188,7 @@ export function usePracticeSession({
   }
 
   function setDraftForActiveQuestion(value: string) {
+    if (PUBLIC_DEMO_BUILD && target.kind === "root") carry.drafts[activeQuestionId] = value;
     setDrafts((current) => ({
       ...current,
       [activeQuestionId]: value,
@@ -191,6 +207,7 @@ export function usePracticeSession({
   function chooseQuestion(id: string, snapshotFallback?: InterviewQuestion) {
     if (pending) return;
     const resolved = resolveHistoricalRootQuestion(id, history.records, snapshotFallback);
+    if (PUBLIC_DEMO_BUILD) carry.rootId = id;
     if (resolved) setTrack(resolved.track);
     setTarget({
       kind: "root",
@@ -216,6 +233,7 @@ export function usePracticeSession({
   function openFollowUpFromAttempt(sourceAttempt: AnswerAttempt) {
     if (pending || sourceAttempt.followUpOfAttemptId || !sourceAttempt.evaluation.followUp) return;
     const rootId = sourceAttempt.rootQuestionId ?? sourceAttempt.questionId;
+    if (PUBLIC_DEMO_BUILD) carry.rootId = rootId;
     const exactSourceSnapshot = isValidRootSnapshot(sourceAttempt.questionSnapshot, rootId)
       ? sourceAttempt.questionSnapshot
       : undefined;
@@ -246,6 +264,7 @@ export function usePracticeSession({
 
   function openSavedFollowUpGroup(group: SavedFollowUpGroup) {
     if (pending) return;
+    if (PUBLIC_DEMO_BUILD) carry.rootId = group.rootQuestionId;
     const question = group.latestAttempt.questionSnapshot ?? group.question;
     setTrack(question.track);
     setTarget({
@@ -270,6 +289,7 @@ export function usePracticeSession({
   function returnToRootQuestion() {
     if (pending || target.kind !== "followup" || !rootQuestionForReturn || !effectiveRootQuestionId)
       return;
+    if (PUBLIC_DEMO_BUILD) carry.rootId = effectiveRootQuestionId;
     setTrack(rootQuestionForReturn.track);
     setTarget({
       kind: "root",
@@ -300,6 +320,7 @@ export function usePracticeSession({
         );
         return;
       }
+      if (PUBLIC_DEMO_BUILD) carry.rootId = derived.rootQuestionId;
       setTrack(derived.question.track);
       setTarget({
         kind: "followup",
@@ -337,6 +358,10 @@ export function usePracticeSession({
       );
       return;
     }
+    if (PUBLIC_DEMO_BUILD) {
+      carry.rootId = rootId;
+      carry.drafts[rootId] = record.answer;
+    }
     setTrack(savedQuestion.track);
     setTarget({
       kind: "root",
@@ -367,6 +392,7 @@ export function usePracticeSession({
     const controller = new AbortController();
     requestRef.current = controller;
     setPending(true);
+    setOfferRemoveKey(false);
     setError(null);
     try {
       const cached = resumableSubmission ?? {
@@ -394,6 +420,15 @@ export function usePracticeSession({
           ? { previousAttemptId: cached.previousAttemptId }
           : {}),
       };
+      if (access.keyMode) {
+        const attempt = await evaluateLocally({ questionId: cached.questionId, answer: cached.answer, followUpOfAttemptId, previousAttemptId: cached.previousAttemptId }, controller.signal);
+        if (controller.signal.aborted) return;
+        saveAttempt(attempt);
+        await history.load(controller.signal);
+        setSelectedAttempt(attempt);
+        setSubmissionCache({});
+        return true;
+      }
       const response = await fetch("/api/practice/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await access.headers()) },
@@ -432,6 +467,7 @@ export function usePracticeSession({
       return true;
     } catch (cause) {
       if (!controller.signal.aborted) {
+        setOfferRemoveKey(access.keyMode && cause instanceof GeminiFailure && cause.removeKey);
         setError(cause instanceof Error ? cause.message : "Please try again.");
         await history.load(controller.signal);
       }
@@ -466,7 +502,7 @@ export function usePracticeSession({
     isRetry: !!retryBaselineId,
     hintCount,
     pending,
-    error,
+    error, offerRemoveKey,
     statusAnnouncement,
     questionAttempts,
     latest,

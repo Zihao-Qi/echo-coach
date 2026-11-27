@@ -1,6 +1,6 @@
 # Public demo update to `main` (`539c95b`)
 
-**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). Image built; private preview deployed and checked; waiting for the owner's launch approval. The public service is unchanged. See Record. Nothing has been built or deployed for this update.
+**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). **Launched on 2026-11-26** with the owner's explicit approval: `echo-coach-demo` serves `539c95b`. The preview has been deleted. See Record. Nothing has been built or deployed for this update.
 
 ## Goal
 
@@ -50,6 +50,22 @@ The update keeps the demo's safety settings unchanged: no credentials, no paid c
   - Snippet: 24 of 25 rows passed, including all 15 clips (206, immutable), the unknown audio paths (404, `private, no-store`), the blocked paths (404) and the rate limit (120 × 200, then 429, `Retry-After 49`).
 - **Encoded audio alias:** the failing row was `/audio/questions/swe-hash-map.eba300ad%2em4a`, which returned 200 with the real file. Cloud Run's Google front end decodes percent-encoded unreserved characters before the request reaches the app. On the current public service, `/practic%65` and `/%70ractice` return 200 and `/leg%61cy` returns 404. The app's allowlist therefore sees the decoded path: an encoded name can only reach an already-public file, and encoded blocked paths stay blocked. The build gate, which talks to the container directly, confirmed that the app itself returns 404 for the encoded form, matching CI. The expectation for this row was wrong for Cloud Run. The public checks in step 4 now expect the decoded file for this alias and add encoded blocked paths.
 - **Logs (check 3.4):** 214 entries: 202 request logs, 6 stdout lines, audit and system entries. No match for the marker, the feedback notice, `echo-practice-demo`, `GCP_IAP`, `GCP_IAAP` or `cookie`. The two `authorization` matches are the audit log's `authorizationInfo` for the lead's deploy actions. Container output is only Next.js startup lines and one "Public demo refused a request at the rate limit."
+
+- **Launch (owner approved, 2026-11-26 ~19:58 CST):**
+  - Before: `spec.traffic` was `latestRevision: true` at 100%.
+  - `gcloud run services update --image` created revision `echo-coach-demo-00003-4ks`, which serves 100% with the digest above.
+  - The env, service account, scaling, CPU throttling and ingress are identical to the saved copy (`diff`), and `allUsers` is still the only invoker.
+- **Public checks:** all passed.
+  - `/`, `/practice` and `/mock-interview` return 200 with their headings.
+  - All 15 clips: 206, exact `Content-Range`, immutable cache.
+  - Both unknown audio paths: 404 with `private, no-store`. The `%2em4a` alias returns the decoded file (42,761 bytes).
+  - 404 for `/legacy`, `/leg%61cy`, `/api/session`, `/api/history`, `/api/practice/Access`, and `/api/practice/transcriptions` and `/api/practice/transcription%73` (GET and POST).
+  - The cross-site POST to `/api/practice/evaluate` returns 403.
+- **Public logs** for `00003-4ks`: 60 entries. No `PUBLIC_CHECK_MARKER`, preview marker, `echo-practice-demo` or `cookie`. Container output is only Next.js startup lines.
+- **Cleanup:**
+  - Deleted `echo-coach-demo-preview`; its IAP policy now returns NOT_FOUND. Deleted revision `echo-coach-demo-00001-9jj`.
+  - Deleted both builds' source objects and the local work directory. The first deploy's 320 KB source object remains.
+  - Kept for rollback: revision `echo-coach-demo-00002-lbj` and the `f471413` image. The registry holds two images, 99 MB and 102 MB.
 
 ## Plan
 

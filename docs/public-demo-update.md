@@ -171,7 +171,7 @@ The checks run against the deployed digest: the Cloud Build gate (fail-closed st
 - session isolation between browsers, and the cookie's `HttpOnly`, `Secure` and `SameSite=Lax` attributes;
 - draft preservation across a restart;
 - the full mobile layout (not checked on the preview);
-- live microphone recording (not exercised on the preview).
+- recording, which CI exercises only with a fake microphone; a real microphone wasn't used on the preview.
 
 Workload Identity Federation remains a follow-up.
 

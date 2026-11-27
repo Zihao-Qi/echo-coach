@@ -1,6 +1,6 @@
 # Public demo update to `main` (`539c95b`)
 
-**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). Image built and private preview deployed; waiting for the owner's walk-through. The public service is unchanged. See Record. Nothing has been built or deployed for this update.
+**Status:** Approved by the owner on 2026-11-26 (including the provenance waiver) after Gemini 4 Neon High's review (REVISE, APPROVE WITH CHANGES, then APPROVE; all findings applied). Image built; private preview deployed and checked; waiting for the owner's launch approval. The public service is unchanged. See Record. Nothing has been built or deployed for this update.
 
 ## Goal
 
@@ -40,6 +40,16 @@ The update keeps the demo's safety settings unchanged: no credentials, no paid c
   - invoker only the IAP agent, accessor only the owner.
 
   The first `iap web add-iam-policy-binding` returned without applying (most likely waiting on an interactive prompt); rerun with stdin closed, it applied. Check 3.2 passed: unauthenticated `curl -sSI` returns 302 to `accounts.google.com`.
+- **Walk-through (check 3.3):** the owner looked through the preview ("looks good to me"). At the owner's suggestion, Gemini 4 Neon High (browser) then did the scripted walk-through in the owner's browser (task 4; recording kept locally), except pressing Record: the lead's task excluded granting the microphone, so the recorder was checked only by its idle text and by the absence of audio requests. Results:
+  - The notices and disclosures appear as specified.
+  - Question audio, polished-answer audio and mock-interview audio played.
+  - The retry cue and the next-question shortcut appear; the follow-up has no recording panel.
+  - The recap shows both sections with Back to practice at both ends.
+  - The mock round ended early on the review screen.
+  - Network: 35 requests, all to the preview host apart from one local browser-extension stylesheet. The only POSTs were three `/api/practice/evaluate` 200s. No request carried audio, and the mock-interview page made no `/api/` request.
+  - Snippet: 24 of 25 rows passed, including all 15 clips (206, immutable), the unknown audio paths (404, `private, no-store`), the blocked paths (404) and the rate limit (120 × 200, then 429, `Retry-After 49`).
+- **Encoded audio alias:** the failing row was `/audio/questions/swe-hash-map.eba300ad%2em4a`, which returned 200 with the real file. Cloud Run's Google front end decodes percent-encoded unreserved characters before the request reaches the app. On the current public service, `/practic%65` and `/%70ractice` return 200 and `/leg%61cy` returns 404. The app's allowlist therefore sees the decoded path: an encoded name can only reach an already-public file, and encoded blocked paths stay blocked. The build gate, which talks to the container directly, confirmed that the app itself returns 404 for the encoded form, matching CI. The expectation for this row was wrong for Cloud Run. The public checks in step 4 now expect the decoded file for this alias and add encoded blocked paths.
+- **Logs (check 3.4):** 214 entries: 202 request logs, 6 stdout lines, audit and system entries. No match for the marker, the feedback notice, `echo-practice-demo`, `GCP_IAP`, `GCP_IAAP` or `cookie`. The two `authorization` matches are the audit log's `authorizationInfo` for the lead's deploy actions. Container output is only Next.js startup lines and one "Public demo refused a request at the rate limit."
 
 ## Plan
 
@@ -110,7 +120,7 @@ Both bindings are service-scoped; never grant them at the project level, which w
 1. **Before:** `describe` shows `spec.traffic` as `latestRevision: true` at 100%. Save the env and service-account section of `describe` for comparison.
 2. `gcloud run services update echo-coach-demo --project echo-490312 --region us-central1 --image "$IMAGE"`.
 3. **After:** `describe` shows the new revision at 100% in `status.traffic`, the new digest, and the env, service account and scaling unchanged from the saved copy. `get-iam-policy` still shows only `allUsers` as invoker.
-4. **Public checks** on `https://echo-coach-demo-189032457820.us-central1.run.app`: the same probe as the build gate (all 15 clips with 206 and the immutable header, the unknown-path and blocked-path 404s, and the cross-site POST 403 with `Origin: https://not-the-demo.example`, `Content-Type: application/json` and body `{"answer":"PUBLIC_CHECK_MARKER"}`). Also, `/`, `/practice` and `/mock-interview` return 200 with their headings. The rate limiter is not exercised on the public URL, because it is shared by all visitors.
+4. **Public checks** on `https://echo-coach-demo-189032457820.us-central1.run.app`: the same probe as the build gate, except that the `%2em4a` alias is expected to return the decoded file (Google's front end normalizes it), plus encoded blocked paths `/leg%61cy` and `/api/practice/transcription%73` (GET and POST) returning 404 (all 15 clips with 206 and the immutable header, the unknown-path and blocked-path 404s, and the cross-site POST 403 with `Origin: https://not-the-demo.example`, `Content-Type: application/json` and body `{"answer":"PUBLIC_CHECK_MARKER"}`). Also, `/`, `/practice` and `/mock-interview` return 200 with their headings. The rate limiter is not exercised on the public URL, because it is shared by all visitors.
 5. **Logs:** container stdout and stderr for the new revision contain only startup lines and fixed refusal messages, and no entry contains `PUBLIC_CHECK_MARKER`.
 6. If any check fails, roll back (below), verify the rollback, and report.
 

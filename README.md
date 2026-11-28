@@ -1,52 +1,26 @@
 # Echo Coach
 
-Echo Coach is an interview-practice workspace for new graduates. Work through behavioral, software engineering, and AI/ML questions, revise your answers, and compare attempts. Feedback is practice guidance, not a hiring decision or a score.
+When you practice for an interview alone, it’s easy to move on after one answer. Echo Coach helps you take a second pass: pick a question, write your answer, revise one detail, and compare the two attempts.
 
-## Try the public demo
+[Try the public demo](https://echo-coach-demo-189032457820.us-central1.run.app) — no account or key needed. Use a fictional answer: the demo shows **sample feedback**, and its recorder returns sample text, not your spoken words.
 
-[Open Echo Coach](https://echo-coach-demo-189032457820.us-central1.run.app). The live demo needs no account or API key. Use fictional answers: feedback is illustrative, not an assessment, and server-side sample history is temporary.
+## How practice works
 
-- **Focused practice** (`/practice`) offers nine starter questions, progressive hints, retry comparisons, one-level follow-ups, and a session recap.
-- **Typed mock interview** (`/mock-interview`) is a three-question round with optional self-review, not live AI coaching.
-- **Audio practice** includes prerecorded questions and selected sample answers. The live demo can capture your voice for practice, but its editable transcript is a fixed sample, not your spoken words.
+Choose one of nine behavioral, software engineering, or AI/ML questions. Get a hint if you’re stuck, then use the retry prompt to guide your revision. For an uninterrupted run, try the three-question typed mock interview instead.
 
-### Merged, not yet live on the public URL
+## What’s been tested
 
-[Browser speech recognition and bring your own Gemini key](docs/bring-your-own-key.md) are on `main` and in a private release preview. With no key, supported browsers can transcribe your speech through their own speech service; browsers without support keep the sample recorder. With your own key, you can get Gemini feedback, technical suggested-answer audio, recording transcription, and follow-up questions. The browser calls Google directly; Echo Coach’s server does not receive your key or recording. Gemini calls use your key’s quota and may incur charges. Key-mode history stays in the tab, separate from sample history.
-
-See [current implementation and release status](docs/implementation-status.md) for what has passed and what still needs verification.
+At release, the [public demo checks](docs/public-demo-update.md#record-2026-11-26) confirmed that both practice modes loaded and all 15 audio clips were served correctly. For the **private preview**, local Chrome tests with a real Gemini key produced feedback, played a suggested answer aloud, and transcribed test audio. Those are functional checks, not a measure of coaching quality. [Hosted microphone and Gemini checks are still pending.](docs/implementation-status.md)
 
 ## Run locally
 
-Use Node.js 22, the same major version as CI and the release image:
+With Node.js 22:
 
-```bash
+```sh
 npm ci
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). The default local setup uses mock feedback. See [`.env.example`](.env.example) for configuration; keep actual credentials in an ignored local file.
+Open [localhost:3000](http://localhost:3000). The default setup uses sample feedback and needs no key.
 
-- **Private practice:** [Auth.js and Firestore setup](docs/cloud-setup.md) covers optional Google sign-in, owner-scoped history, and real server-side evaluation. This is separate from public browser key mode.
-- **Local recording:** the [default recording flow](docs/recorded-voice-ui.md) validates captured audio and returns a fixture transcript when demo transcription is enabled. It is not real speech recognition.
-- **Legacy prototype:** `/legacy` is retained outside the public profile. Its real-mode endpoints are blocked in production. Do not use legacy instructions to deploy the public demo.
-
-## Verify changes
-
-```bash
-npm run lint
-npx tsc --noEmit
-npm run test:unit
-npm run test:integration
-npm run test:e2e:install
-npm run test:e2e
-```
-
-CI also builds the public-demo image and exercises it over HTTPS with synthetic inputs and fake Gemini responses. No real key is needed for automated tests.
-
-## Further reading
-
-- [Progress and release status](docs/implementation-status.md)
-- [Architecture](docs/architecture.md)
-- [Retry comparison](docs/retry-comparison.md) and [targeted follow-ups](docs/follow-up-design.md)
-- [Voice and recap release](docs/voice-and-recap.md) and [public deployment record](docs/public-demo-update.md)
+[Release status](docs/implementation-status.md) · [Future ideas](docs/future-ideas.md)
